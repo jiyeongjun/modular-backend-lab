@@ -1,0 +1,22 @@
+logging {
+  level = "info"
+}
+
+otelcol.receiver.otlp "default" {
+  http {}
+}
+
+otelcol.exporter.otlphttp "tempo" {
+  client {
+    endpoint = "http://tempo:4318"
+  }
+}
+
+otelcol.service "default" {
+  pipelines {
+    traces = {
+      receivers = [otelcol.receiver.otlp.default.input]
+      exporters = [otelcol.exporter.otlphttp.tempo.input]
+    }
+  }
+}

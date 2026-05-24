@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: Modular Backend Lab
+    orgId: 1
+    folder: Modular Backend Lab
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

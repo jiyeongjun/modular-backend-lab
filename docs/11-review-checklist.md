@@ -1,0 +1,33 @@
+# Review Checklist
+
+- Did domain import any framework or infra dependency?
+- Did application import Hono or Kysely?
+- Did application import BullMQ, SQS, Valkey, or Redis clients?
+- Did domain/application import telemetry SDKs?
+- Are business errors modeled as `Result`?
+- Are unexpected errors allowed to throw?
+- Are transactions explicit?
+- Are DB rows mapped explicitly?
+- Are Zod schemas only used at boundaries?
+- Are HTTP routes thin?
+- Are batch jobs using `AsyncIterable` for large or unbounded work?
+- Is concurrency explicit and bounded?
+- Are queue consumers idempotent where needed?
+- Are long-running DB transactions avoided?
+- Are observability signals added in edge/infra layers?
+- Are tests risk-based rather than file-based?
+- Are tests focused on observable behavior?
+- Are mock-heavy tests avoided?
+- Are docs updated?
+- Is the design simpler than the problem requires?
+- Is there any premature abstraction?
+- Is cross-module coupling controlled?
+- Did dependency changes use stable exact versions?
+- Did Biome pass?
+- Did architecture check pass?
+- Did typecheck pass without weakening compiler settings?
+- Did the change avoid `any`, `as any`, broad casts, and unjustified non-null assertions?
+- Are domain states, errors, and events represented with discriminated unions where appropriate?
+- Are new union variants handled exhaustively?
+- Are invalid states made difficult or impossible to represent?
+- Did convention scan pass?

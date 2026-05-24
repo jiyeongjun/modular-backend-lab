@@ -1,0 +1,12 @@
+---
+description: Modular backend architecture boundaries
+globs:
+  - "**/*.ts"
+alwaysApply: true
+---
+
+Read `AGENTS.md` first, then the relevant `ai/skills/*.md` playbook.
+
+Domain and application code must stay independent from delivery and infrastructure adapters. Preserve
+strict TypeScript, avoid unsafe casts, keep Zod at boundaries, and run the relevant quality gate
+before finishing changes.
