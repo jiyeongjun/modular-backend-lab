@@ -30,6 +30,63 @@ Infrastructure adapters
 - Domain/Application = portable core
 - TypeScript compiler = first-line architecture guard
 
+## 설계 철학 / Design Philosophy
+
+이 레포는 “빠르다”거나 “안전하다”는 주장을 벤치마크 없이 내세우지 않습니다. 대신 장기 운영에서
+문제가 되기 쉬운 지점을 코드 구조와 검증 도구로 줄이는 쪽에 초점을 둡니다.
+
+This repository does not claim speed or safety without benchmarks. It focuses on reducing common
+long-term backend risks through structure and verification.
+
+### 안전성 / Safety
+
+- TypeScript strict mode, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`로 타입 피드백을
+  먼저 받습니다.
+- Zod는 HTTP/env/external payload 같은 boundary validation에만 사용합니다.
+- 예상 가능한 비즈니스 실패는 exception이 아니라 `Result`로 반환합니다.
+- 상태 변경과 outbox write는 explicit UnitOfWork transaction 안에서 처리합니다.
+- dependency-cruiser와 `scripts/convention-scan.ts`가 framework/infra leakage, unsafe casts,
+  strictness 약화를 검사합니다.
+
+- TypeScript strict mode, `noUncheckedIndexedAccess`, and `exactOptionalPropertyTypes` provide early
+  compile-time feedback.
+- Zod is limited to boundary validation for HTTP, env, and external payloads.
+- Expected business failures return `Result` instead of exceptions.
+- State changes and outbox writes happen inside explicit UnitOfWork transactions.
+- dependency-cruiser and `scripts/convention-scan.ts` check framework/infra leakage, unsafe casts,
+  and weakened strictness.
+
+### 성능 의식 / Performance-Conscious Design
+
+- Hono를 얇은 HTTP adapter로 두어 request handling overhead와 coupling을 작게 유지합니다.
+- Kysely를 사용해 heavy ORM abstraction 없이 명시적인 SQL 경계를 유지합니다.
+- 큰 batch workload는 `AsyncIterable`로 streaming 처리하고, concurrency는 명시적으로 제한합니다.
+- Outbox publisher는 외부 publish를 긴 DB transaction 안에서 수행하지 않도록 분리되어 있습니다.
+- Prometheus/OpenTelemetry wiring을 포함해 latency, request count, runtime signal을 관찰할 수 있게
+  했습니다.
+
+- Hono stays as a thin HTTP adapter to keep request handling and coupling small.
+- Kysely keeps SQL explicit without a heavy ORM abstraction.
+- Large batch workloads use `AsyncIterable` streaming with explicit bounded concurrency.
+- The outbox publisher avoids doing external publishing inside long DB transactions.
+- Prometheus/OpenTelemetry wiring makes latency, request count, and runtime signals observable.
+
+### 지속 가능성 / Sustainability
+
+- Domain, application, ports, infra, HTTP, jobs, workers를 분리해 모듈이 늘어나도 변경 범위를 좁게
+  유지합니다.
+- `AGENTS.md`, `docs/`, `ai/skills/`가 future AI/human maintenance rule을 문서화합니다.
+- Biome, dependency-cruiser, convention scanner, CI quality gate가 반복 가능한 검증 경로를 제공합니다.
+- dependency는 exact version과 lockfile로 고정하고, Node Active LTS 정책을 문서화했습니다.
+- 테스트는 파일 수가 아니라 risk와 observable behavior 기준으로 추가합니다.
+
+- Domain, application, ports, infra, HTTP, jobs, and workers are separated to keep change scope local
+  as modules grow.
+- `AGENTS.md`, `docs/`, and `ai/skills/` document future AI/human maintenance rules.
+- Biome, dependency-cruiser, convention scanner, and CI quality gates provide repeatable verification.
+- Dependencies use exact versions and a lockfile, with Node Active LTS documented as policy.
+- Tests are added by risk and observable behavior, not file count.
+
 ## 기술 스택 / Tech Stack
 
 - Node.js 24 Active LTS
