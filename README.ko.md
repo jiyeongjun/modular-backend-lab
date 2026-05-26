@@ -113,6 +113,7 @@ src/modules/order/       결제 상태 전이와 outbox reference
 src/modules/inventory/   재고 예약, 해제, 확정, 만료 reference
 src/modules/payment/     Toss Payments confirm/cancel adapter와 결제 상태 전이 reference
 src/modules/checkout/    주문 검증, 재고 예약, 결제 승인, 보상 흐름 orchestration reference
+src/modules/fulfillment/ 결제 이후 출고, 운송장, 배송 상태 동기화 reference
 ```
 
 각 모듈은 같은 layer shape를 따릅니다.
@@ -125,6 +126,31 @@ src/modules/checkout/    주문 검증, 재고 예약, 결제 승인, 보상 흐
   http/
   tests/
 ```
+
+각 layer의 역할은 다음처럼 나뉩니다.
+
+- `domain/`: 순수 TypeScript 타입과 상태 전이 함수가 위치합니다. IO, framework, DB, logging 없이
+  입력을 받아 새 상태와 domain event를 반환하는 쪽을 선호합니다.
+- `application/`: usecase orchestration 계층입니다. repository, external provider, transaction
+  port를 조합하고 예상 가능한 실패를 `Result`로 반환합니다.
+- `ports/`: application이 필요로 하는 repository, UnitOfWork, external gateway interface를
+  정의합니다.
+- `infra/`: Kysely repository, mapper, external API adapter처럼 port의 concrete implementation을
+  둡니다.
+- `http/`: Hono/Zod 기반 delivery adapter입니다. 요청 검증, command 변환, response mapping만
+  담당합니다.
+- `tests/`: domain behavior, usecase orchestration, route contract, repository behavior를 risk
+  기준으로 검증합니다.
+
+이 구조는 특정 함수형 framework를 전제로 하지 않지만, TypeScript 안에서 유지 가능한 함수형
+스타일을 일부 차용합니다. Domain 계층에서는 class hierarchy보다 순수 함수, 불변 상태 전이,
+discriminated union, exhaustive check, `Result` 반환을 선호합니다. `Effect`, `fp-ts` 같은 별도
+effect system을 도입하지 않고, 표준 TypeScript로 경계와 상태를 명시하는 쪽을 선택합니다.
+
+트랜잭션 경계는 application usecase에서 명시적으로 잡습니다. Domain은 transaction을 알지 못하고,
+Kysely transaction도 application 밖으로 새지 않습니다. 상태 변경과 outbox write는 짧은
+UnitOfWork transaction 안에서 함께 처리하며, 결제/배송사 API 같은 외부 호출은 DB transaction
+밖에서 수행합니다.
 
 ## 로컬 실행
 
@@ -149,6 +175,16 @@ curl -X POST http://localhost:3000/payments/confirm \
 curl -X POST http://localhost:3000/checkout/submit \
   -H 'content-type: application/json' \
   -d '{"orderId":"order-1","sku":"sku-1","quantity":2,"paymentKey":"test-payment-key","amount":10000,"currency":"KRW","idempotencyKey":"checkout-1"}'
+
+curl -X POST http://localhost:3000/fulfillments \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"order-1","idempotencyKey":"fulfillment-1","recipient":{"name":"Kim","phone":"010-0000-0000","line1":"Seoul","line2":null,"postalCode":"12345","country":"KR"},"package":{"weightGrams":500,"description":"T-shirt"}}'
+
+curl -X POST http://localhost:3000/fulfillments/fulfillment-1/pack
+
+curl -X POST http://localhost:3000/fulfillments/fulfillment-1/label \
+  -H 'content-type: application/json' \
+  -d '{"idempotencyKey":"label-1"}'
 ```
 
 Outbox job 실행:
@@ -161,6 +197,12 @@ Inventory reservation expiration job 실행:
 
 ```bash
 pnpm worker:inventory-expire
+```
+
+Fulfillment status sync job 실행:
+
+```bash
+pnpm worker:fulfillment-sync
 ```
 
 ## 관측성

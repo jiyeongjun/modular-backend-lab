@@ -110,6 +110,7 @@ src/modules/order/       payment transition and outbox reference
 src/modules/inventory/   stock reservation, release, commit, and expiration reference
 src/modules/payment/     Toss Payments confirm/cancel adapter and payment state reference
 src/modules/checkout/    order validation, inventory, payment, and compensation orchestration reference
+src/modules/fulfillment/ post-payment fulfillment, labels, and shipment status sync reference
 ```
 
 Each module follows the same layer shape:
@@ -122,6 +123,31 @@ Each module follows the same layer shape:
   http/
   tests/
 ```
+
+Each layer has a narrow role:
+
+- `domain/`: pure TypeScript types and state transition functions. It favors receiving input and
+  returning new state plus domain events without IO, frameworks, DB access, or logging.
+- `application/`: usecase orchestration. It composes repositories, external providers, and
+  transaction ports, and returns expected failures as `Result`.
+- `ports/`: repository, UnitOfWork, and external gateway interfaces required by application code.
+- `infra/`: concrete port implementations such as Kysely repositories, mappers, and external API
+  adapters.
+- `http/`: Hono/Zod delivery adapter code. It validates requests, builds command objects, calls
+  usecases, and maps responses.
+- `tests/`: risk-based coverage for domain behavior, usecase orchestration, route contracts, and
+  repository behavior.
+
+The structure borrows a practical subset of functional programming style without depending on a
+specific FP framework. In the domain layer, the code favors pure functions, immutable state
+transitions, discriminated unions, exhaustive checks, and `Result` returns over class hierarchies.
+It does not introduce an effect system such as `Effect` or `fp-ts`; the goal is explicit boundaries
+and state modeling with standard TypeScript.
+
+Transaction boundaries are explicit in application usecases. Domain code does not know about
+transactions, and Kysely transactions do not leak past infrastructure adapters. State changes and
+outbox writes happen together inside short UnitOfWork transactions, while external calls such as
+payment or carrier API requests happen outside DB transactions.
 
 ## Local Setup
 
@@ -146,6 +172,16 @@ curl -X POST http://localhost:3000/payments/confirm \
 curl -X POST http://localhost:3000/checkout/submit \
   -H 'content-type: application/json' \
   -d '{"orderId":"order-1","sku":"sku-1","quantity":2,"paymentKey":"test-payment-key","amount":10000,"currency":"KRW","idempotencyKey":"checkout-1"}'
+
+curl -X POST http://localhost:3000/fulfillments \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"order-1","idempotencyKey":"fulfillment-1","recipient":{"name":"Kim","phone":"010-0000-0000","line1":"Seoul","line2":null,"postalCode":"12345","country":"KR"},"package":{"weightGrams":500,"description":"T-shirt"}}'
+
+curl -X POST http://localhost:3000/fulfillments/fulfillment-1/pack
+
+curl -X POST http://localhost:3000/fulfillments/fulfillment-1/label \
+  -H 'content-type: application/json' \
+  -d '{"idempotencyKey":"label-1"}'
 ```
 
 Run the outbox job:
@@ -158,6 +194,12 @@ Run the inventory reservation expiration job:
 
 ```bash
 pnpm worker:inventory-expire
+```
+
+Run the fulfillment status sync job:
+
+```bash
+pnpm worker:fulfillment-sync
 ```
 
 ## Observability

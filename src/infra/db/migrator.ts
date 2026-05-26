@@ -6,11 +6,13 @@ import { closeDatabase, createDatabase, type Db } from "./db.js";
 import * as initialMigration from "./migrations/0001_initial.js";
 import * as inventoryMigration from "./migrations/0002_inventory.js";
 import * as paymentMigration from "./migrations/0003_payment.js";
+import * as fulfillmentMigration from "./migrations/0004_fulfillment.js";
 
 const migrations: Record<string, Migration> = {
   "0001_initial": initialMigration,
   "0002_inventory": inventoryMigration,
   "0003_payment": paymentMigration,
+  "0004_fulfillment": fulfillmentMigration,
 };
 
 export function createMigrator(db: Db): Migrator {

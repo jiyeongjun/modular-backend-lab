@@ -4,6 +4,14 @@ import type { HttpMetrics } from "../infra/telemetry/metrics.js";
 import type { SubmitCheckoutUseCase } from "../modules/checkout/application/index.js";
 import { createCheckoutRoutes } from "../modules/checkout/http/index.js";
 import type {
+  CancelFulfillmentUseCase,
+  CreateFulfillmentUseCase,
+  MarkFulfillmentPackedUseCase,
+  PurchaseShippingLabelUseCase,
+  SyncFulfillmentCarrierStatusUseCase,
+} from "../modules/fulfillment/application/index.js";
+import { createFulfillmentRoutes } from "../modules/fulfillment/http/index.js";
+import type {
   CommitReservationUseCase,
   ReleaseReservationUseCase,
   ReserveInventoryUseCase,
@@ -34,6 +42,11 @@ export function createApp(deps: {
   confirmPaymentUseCase: ConfirmPaymentUseCase;
   cancelPaymentUseCase: CancelPaymentUseCase;
   submitCheckoutUseCase: SubmitCheckoutUseCase;
+  createFulfillmentUseCase: CreateFulfillmentUseCase;
+  markFulfillmentPackedUseCase: MarkFulfillmentPackedUseCase;
+  purchaseShippingLabelUseCase: PurchaseShippingLabelUseCase;
+  cancelFulfillmentUseCase: CancelFulfillmentUseCase;
+  syncFulfillmentCarrierStatusUseCase: SyncFulfillmentCarrierStatusUseCase;
 }): Hono<AppBindings> {
   const app = new Hono<AppBindings>();
 
@@ -61,6 +74,16 @@ export function createApp(deps: {
     }),
   );
   app.route("/", createCheckoutRoutes({ submitCheckoutUseCase: deps.submitCheckoutUseCase }));
+  app.route(
+    "/",
+    createFulfillmentRoutes({
+      createFulfillmentUseCase: deps.createFulfillmentUseCase,
+      markFulfillmentPackedUseCase: deps.markFulfillmentPackedUseCase,
+      purchaseShippingLabelUseCase: deps.purchaseShippingLabelUseCase,
+      cancelFulfillmentUseCase: deps.cancelFulfillmentUseCase,
+      syncFulfillmentCarrierStatusUseCase: deps.syncFulfillmentCarrierStatusUseCase,
+    }),
+  );
 
   return app;
 }

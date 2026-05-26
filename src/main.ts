@@ -12,6 +12,17 @@ import {
   createCheckoutPaymentAdapter,
 } from "./modules/checkout/infra/index.js";
 import {
+  createCancelFulfillmentUseCase,
+  createCreateFulfillmentUseCase,
+  createMarkFulfillmentPackedUseCase,
+  createPurchaseShippingLabelUseCase,
+  createSyncFulfillmentCarrierStatusUseCase,
+} from "./modules/fulfillment/application/index.js";
+import {
+  createKyselyFulfillmentUnitOfWork,
+  createLocalShippingCarrier,
+} from "./modules/fulfillment/infra/index.js";
+import {
   createCommitReservationUseCase,
   createReleaseReservationUseCase,
   createReserveInventoryUseCase,
@@ -95,6 +106,31 @@ const submitCheckoutUseCase = createSubmitCheckoutUseCase({
   now: () => new Date(),
   reservationTtlMs: 15 * 60 * 1000,
 });
+const fulfillmentUow = createKyselyFulfillmentUnitOfWork(db);
+const shippingCarrier = createLocalShippingCarrier({ now: () => new Date() });
+const createFulfillmentUseCase = createCreateFulfillmentUseCase({
+  uow: fulfillmentUow,
+  now: () => new Date(),
+  generateId: () => uuidGenerator.generate(),
+});
+const markFulfillmentPackedUseCase = createMarkFulfillmentPackedUseCase({
+  uow: fulfillmentUow,
+  now: () => new Date(),
+});
+const purchaseShippingLabelUseCase = createPurchaseShippingLabelUseCase({
+  uow: fulfillmentUow,
+  carrier: shippingCarrier,
+  now: () => new Date(),
+});
+const cancelFulfillmentUseCase = createCancelFulfillmentUseCase({
+  uow: fulfillmentUow,
+  now: () => new Date(),
+});
+const syncFulfillmentCarrierStatusUseCase = createSyncFulfillmentCarrierStatusUseCase({
+  uow: fulfillmentUow,
+  carrier: shippingCarrier,
+  now: () => new Date(),
+});
 const app = createApp({
   logger,
   metrics: createMetricsRegistry(),
@@ -105,6 +141,11 @@ const app = createApp({
   confirmPaymentUseCase,
   cancelPaymentUseCase,
   submitCheckoutUseCase,
+  createFulfillmentUseCase,
+  markFulfillmentPackedUseCase,
+  purchaseShippingLabelUseCase,
+  cancelFulfillmentUseCase,
+  syncFulfillmentCarrierStatusUseCase,
 });
 
 const server = serve(

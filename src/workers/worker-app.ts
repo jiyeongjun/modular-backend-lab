@@ -3,8 +3,18 @@ import { createDatabase } from "../infra/db/db.js";
 import { createLogger } from "../infra/logger/logger.js";
 import { createBullMqConnection } from "../infra/queue/bullmq/bullmq-connection.js";
 import { createBullMqEventPublisher } from "../infra/queue/bullmq/bullmq-publisher.js";
+import { runFulfillmentStatusSyncerJob } from "../jobs/fulfillment-status-syncer/fulfillment-status-syncer.job.js";
 import { runInventoryReservationExpirerJob } from "../jobs/inventory-reservation-expirer/inventory-reservation-expirer.job.js";
 import { runOutboxPublisherJob } from "../jobs/outbox-publisher/outbox-publisher.job.js";
+import {
+  createSyncFulfillmentCarrierStatusUseCase,
+  createSyncFulfillmentStatusesUseCase,
+} from "../modules/fulfillment/application/index.js";
+import {
+  createKyselyFulfillmentReader,
+  createKyselyFulfillmentUnitOfWork,
+  createLocalShippingCarrier,
+} from "../modules/fulfillment/infra/index.js";
 import { createExpireReservationsUseCase } from "../modules/inventory/application/index.js";
 import {
   createKyselyInventoryReservationReader,
@@ -25,6 +35,23 @@ async function main(): Promise<void> {
           reader: createKyselyInventoryReservationReader(db),
           uow: createKyselyInventoryUnitOfWork(db),
           now: () => new Date(),
+        }),
+        logger,
+      });
+      return;
+    }
+
+    if (jobName === "fulfillment-status-syncer") {
+      const carrier = createLocalShippingCarrier({ now: () => new Date() });
+      const syncOne = createSyncFulfillmentCarrierStatusUseCase({
+        uow: createKyselyFulfillmentUnitOfWork(db),
+        carrier,
+        now: () => new Date(),
+      });
+      await runFulfillmentStatusSyncerJob({
+        syncFulfillmentStatusesUseCase: createSyncFulfillmentStatusesUseCase({
+          reader: createKyselyFulfillmentReader(db),
+          syncOne,
         }),
         logger,
       });

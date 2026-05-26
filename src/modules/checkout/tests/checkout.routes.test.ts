@@ -30,6 +30,21 @@ function createTestApp(submitCheckoutUseCase: SubmitCheckoutUseCase) {
       throw new Error("unexpected payment route call");
     },
     submitCheckoutUseCase,
+    createFulfillmentUseCase: async () => {
+      throw new Error("unexpected fulfillment route call");
+    },
+    markFulfillmentPackedUseCase: async () => {
+      throw new Error("unexpected fulfillment route call");
+    },
+    purchaseShippingLabelUseCase: async () => {
+      throw new Error("unexpected fulfillment route call");
+    },
+    cancelFulfillmentUseCase: async () => {
+      throw new Error("unexpected fulfillment route call");
+    },
+    syncFulfillmentCarrierStatusUseCase: async () => {
+      throw new Error("unexpected fulfillment route call");
+    },
   });
 }
 

@@ -72,6 +72,35 @@ export type PaymentsTable = {
   updated_at: TimestampColumn;
 };
 
+export type FulfillmentsTable = {
+  id: string;
+  order_id: string;
+  idempotency_key: string;
+  status: string;
+  recipient_name: string;
+  recipient_phone: string;
+  address_line1: string;
+  address_line2: string | null;
+  postal_code: string;
+  country: string;
+  weight_grams: number;
+  package_description: string | null;
+  label_idempotency_key: string | null;
+  carrier: string | null;
+  carrier_shipment_id: string | null;
+  tracking_number: string | null;
+  carrier_status: string | null;
+  packed_at: TimestampColumn | null;
+  label_purchased_at: TimestampColumn | null;
+  shipped_at: TimestampColumn | null;
+  delivered_at: TimestampColumn | null;
+  cancelled_at: TimestampColumn | null;
+  cancel_reason: string | null;
+  version: number;
+  created_at: TimestampColumn;
+  updated_at: TimestampColumn;
+};
+
 export type KyselyMigrationTable = {
   name: string;
   timestamp: TimestampColumn;
@@ -83,6 +112,7 @@ export type KyselyMigrationLockTable = {
 };
 
 export type Database = {
+  fulfillments: FulfillmentsTable;
   inventory_items: InventoryItemsTable;
   inventory_reservations: InventoryReservationsTable;
   orders: OrdersTable;
@@ -106,3 +136,6 @@ export type InventoryReservationUpdate = Updateable<InventoryReservationsTable>;
 export type PaymentRow = Selectable<PaymentsTable>;
 export type PaymentInsert = Insertable<PaymentsTable>;
 export type PaymentUpdate = Updateable<PaymentsTable>;
+export type FulfillmentRow = Selectable<FulfillmentsTable>;
+export type FulfillmentInsert = Insertable<FulfillmentsTable>;
+export type FulfillmentUpdate = Updateable<FulfillmentsTable>;
