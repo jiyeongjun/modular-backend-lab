@@ -65,8 +65,8 @@ functional library, boundaries and state are modeled with standard TypeScript.
   explicit UnitOfWork transactions.
 - Current tables are projections for reads and idempotency, while `outbox_events` is the integration
   publishing queue.
-- Order, payment, inventory, fulfillment, refund, settlement, and promotion keep append-only domain
-  event streams as the basis for state changes.
+- Order, payment, inventory, fulfillment, refund, settlement, promotion, and returns keep
+  append-only domain event streams as the basis for state changes.
 
 ### Performance-Conscious Design
 
@@ -113,10 +113,10 @@ emit metrics, or start traces directly.
 
 ## Event Sourcing And Projections
 
-Flows tied to money, stock, settlement readiness, coupon policy, or delivery state use append-only
-`domain_events` as the business ledger. Current tables such as `orders`, `payments`,
-`inventory_items`, `fulfillments`, `refunds`, `settlements`, `coupons`, and
-`coupon_redemptions` are projections for API responses, idempotency lookups, and batch scans.
+Flows tied to money, stock, settlement readiness, coupon policy, returns, or delivery state use
+append-only `domain_events` as the business ledger. Current tables such as `orders`, `payments`,
+`inventory_items`, `fulfillments`, `refunds`, `settlements`, `coupons`, `coupon_redemptions`, and
+`return_requests` are projections for API responses, idempotency lookups, and batch scans.
 
 `outbox_events` is not the event store. `domain_events` records aggregate state and audit/accounting
 evidence; `outbox_events` handles integration publishing, retry, and delivery failure isolation.
@@ -134,9 +134,9 @@ Business backends usually become complex through many small policies, edge cases
 rather than one large feature. This structure is meant to give those changes a clear home without
 spreading the change across unrelated flows.
 
-- Policy changes extend domain events and state transitions. For example, partial refunds,
-  exchanges, and return inspection can be modeled in `refund`, while application usecases coordinate
-  the workflow.
+- Policy changes extend domain events and state transitions. For example, return requests, RMA
+  authorization, receipt, and inspection are owned by `returns`, while follow-up partial refund or
+  restock workflows can consume those events.
 - Discount policies stay in `promotion` as coupon policy and redemption lifecycle. Minimum order
   amount, SKU eligibility, usage limits, and release after checkout failure do not leak into
   order/payment internals.
@@ -176,6 +176,7 @@ src/modules/fulfillment/ fulfillment, label, and shipment status event stream wi
 src/modules/refund/      refund request, approval, PG refund, restock, and completion event stream
 src/modules/settlement/  order-level settlement readiness from payment, refund, and delivery events
 src/modules/promotion/   coupon discount policy, quote, reservation, commit, and release event stream
+src/modules/returns/     return request, RMA authorization, receipt, and inspection event stream
 ```
 
 Each module follows the same layer shape:
@@ -262,6 +263,18 @@ curl -X POST http://localhost:3000/refunds \
   -d '{"orderId":"order-1","paymentId":"payment-1","amount":10000,"currency":"KRW","reason":"customer request","returnRequired":true,"restock":{"sku":"sku-1","quantity":2},"idempotencyKey":"refund-1"}'
 
 curl -X POST http://localhost:3000/refunds/refund-1/process
+
+curl -X POST http://localhost:3000/returns \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"order-1","fulfillmentId":"fulfillment-1","idempotencyKey":"return-1","reason":"wrong size","items":[{"sku":"sku-1","quantity":1}]}'
+
+curl -X POST http://localhost:3000/returns/return-1/authorize
+
+curl -X POST http://localhost:3000/returns/return-1/receive
+
+curl -X POST http://localhost:3000/returns/return-1/inspect \
+  -H 'content-type: application/json' \
+  -d '{"accepted":true,"restockableItems":[{"sku":"sku-1","quantity":1}],"note":"restockable"}'
 
 curl -X POST http://localhost:3000/promotions/coupons \
   -H 'content-type: application/json' \

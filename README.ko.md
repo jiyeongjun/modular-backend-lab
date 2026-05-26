@@ -64,7 +64,8 @@ Domain 계층은 객체 상속 구조보다 순수 함수, 불변 상태 전이,
   UnitOfWork transaction 안에서 함께 처리합니다.
 - 현재 상태 테이블은 조회와 idempotency를 위한 projection이며, `outbox_events`는 외부 발행을 위한
   queue입니다.
-- `order`, `payment`, `inventory`, `fulfillment`, `refund`, `settlement`, `promotion` 모듈은
+- `order`, `payment`, `inventory`, `fulfillment`, `refund`, `settlement`, `promotion`, `returns`
+  모듈은
   append-only domain event stream을 기준으로 상태 변경 근거를 남깁니다.
 
 ### 성능을 의식한 경계
@@ -114,10 +115,10 @@ metrics, traces를 직접 수행하지 않습니다.
 
 ## Event Sourcing과 projection
 
-주문, 결제, 재고, 배송, 환불, 정산, 쿠폰처럼 돈, 재고, 운영 근거와 연결되는 흐름은 append-only
+주문, 결제, 재고, 배송, 환불, 정산, 쿠폰, 반품처럼 돈, 재고, 운영 근거와 연결되는 흐름은 append-only
 `domain_events`를 상태 변경의 원장으로 둡니다. `orders`, `payments`, `inventory_items`,
-`fulfillments`, `refunds`, `settlements`, `coupons`, `coupon_redemptions` 같은 현재 상태 테이블은
-API 응답, idempotency lookup, batch scan을 위한 projection입니다.
+`fulfillments`, `refunds`, `settlements`, `coupons`, `coupon_redemptions`, `return_requests` 같은
+현재 상태 테이블은 API 응답, idempotency lookup, batch scan을 위한 projection입니다.
 
 `outbox_events`는 event store가 아닙니다. `domain_events`는 aggregate 상태와 감사/회계 근거를 위한
 원장이고, `outbox_events`는 외부 시스템 발행 실패와 재시도를 다루는 integration queue입니다. 상태
@@ -135,8 +136,8 @@ ERP나 회계 기능은 이 레포 안에 직접 넣지 않습니다. `settlemen
 복잡해집니다. 이 구조는 그런 변화가 들어왔을 때 기존 흐름을 넓게 흔들지 않고, 적절한 모듈과
 계층에 변경을 배치하는 것을 목표로 합니다.
 
-- 정책이 바뀌면 domain event와 상태 전이를 확장합니다. 예를 들어 부분 환불, 교환, 반품 검수는
-  `refund`의 상태와 event로 표현하고, 실제 진행 순서는 application usecase가 조율합니다.
+- 정책이 바뀌면 domain event와 상태 전이를 확장합니다. 예를 들어 반품 요청, RMA 발급, 입고, 검수는
+  `returns`가 소유하고, 부분 환불이나 재입고 같은 후속 흐름은 해당 이벤트를 기준으로 연결합니다.
 - 할인 정책이 늘어나면 `promotion`의 coupon policy와 redemption lifecycle로 분리합니다. 예를 들어
   최소 주문 금액, SKU eligibility, 사용 횟수 제한, checkout 실패 시 예약 해제는 order/payment 내부로
   흘려보내지 않고 coupon usecase가 담당합니다.
@@ -173,6 +174,7 @@ src/modules/fulfillment/ 출고, 운송장, 배송 상태 event stream과 projec
 src/modules/refund/      환불 요청, 승인, PG 환불, 재입고, 완료 event stream
 src/modules/settlement/  결제, 환불, 배송 이벤트에서 만든 주문별 정산 준비 상태 projection
 src/modules/promotion/   쿠폰 할인 정책, quote, 예약, 확정, 해제 event stream
+src/modules/returns/     반품 요청, RMA 발급, 입고, 검수 event stream
 ```
 
 각 모듈은 같은 layer shape를 따릅니다.
@@ -260,6 +262,18 @@ curl -X POST http://localhost:3000/refunds \
   -d '{"orderId":"order-1","paymentId":"payment-1","amount":10000,"currency":"KRW","reason":"customer request","returnRequired":true,"restock":{"sku":"sku-1","quantity":2},"idempotencyKey":"refund-1"}'
 
 curl -X POST http://localhost:3000/refunds/refund-1/process
+
+curl -X POST http://localhost:3000/returns \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"order-1","fulfillmentId":"fulfillment-1","idempotencyKey":"return-1","reason":"wrong size","items":[{"sku":"sku-1","quantity":1}]}'
+
+curl -X POST http://localhost:3000/returns/return-1/authorize
+
+curl -X POST http://localhost:3000/returns/return-1/receive
+
+curl -X POST http://localhost:3000/returns/return-1/inspect \
+  -H 'content-type: application/json' \
+  -d '{"accepted":true,"restockableItems":[{"sku":"sku-1","quantity":1}],"note":"restockable"}'
 
 curl -X POST http://localhost:3000/promotions/coupons \
   -H 'content-type: application/json' \

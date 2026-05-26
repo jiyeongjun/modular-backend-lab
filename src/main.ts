@@ -64,6 +64,13 @@ import {
   createRefundPaymentAdapter,
 } from "./modules/refund/infra/index.js";
 import {
+  createAuthorizeReturnUseCase,
+  createCreateReturnRequestUseCase,
+  createInspectReturnUseCase,
+  createReceiveReturnUseCase,
+} from "./modules/returns/application/index.js";
+import { createKyselyReturnsUnitOfWork } from "./modules/returns/infra/index.js";
+import {
   createGetSettlementUseCase,
   createSyncSettlementUseCase,
 } from "./modules/settlement/application/index.js";
@@ -185,6 +192,25 @@ const rejectRefundUseCase = createRejectRefundUseCase({
   uow: refundUow,
   now: () => new Date(),
 });
+const returnsUow = createKyselyReturnsUnitOfWork(db);
+const createReturnRequestUseCase = createCreateReturnRequestUseCase({
+  uow: returnsUow,
+  now: () => new Date(),
+  generateId: () => uuidGenerator.generate(),
+});
+const authorizeReturnUseCase = createAuthorizeReturnUseCase({
+  uow: returnsUow,
+  now: () => new Date(),
+  generateRmaNumber: () => `RMA-${uuidGenerator.generate()}`,
+});
+const receiveReturnUseCase = createReceiveReturnUseCase({
+  uow: returnsUow,
+  now: () => new Date(),
+});
+const inspectReturnUseCase = createInspectReturnUseCase({
+  uow: returnsUow,
+  now: () => new Date(),
+});
 const promotionUow = createKyselyPromotionUnitOfWork(db);
 const createCouponUseCase = createCreateCouponUseCase({
   uow: promotionUow,
@@ -236,6 +262,10 @@ const app = createApp({
   requestRefundUseCase,
   processRefundUseCase,
   rejectRefundUseCase,
+  createReturnRequestUseCase,
+  authorizeReturnUseCase,
+  receiveReturnUseCase,
+  inspectReturnUseCase,
   createCouponUseCase,
   quoteCouponUseCase,
   reserveCouponUseCase,

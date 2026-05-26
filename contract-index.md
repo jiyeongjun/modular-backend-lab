@@ -15,3 +15,5 @@ No active contract.
 - Apply the ledger pattern to `order`, `payment`, `inventory`, `fulfillment`, `refund`,
   `settlement`, and `promotion`.
 - Leave `checkout` as orchestration because it has no persisted aggregate of its own.
+- Add `returns` as the module that owns return request, RMA authorization, receipt, and inspection
+  before any refund/restock orchestration consumes those facts.

@@ -39,6 +39,13 @@ import type {
 } from "../modules/refund/application/index.js";
 import { createRefundRoutes } from "../modules/refund/http/index.js";
 import type {
+  AuthorizeReturnUseCase,
+  CreateReturnRequestUseCase,
+  InspectReturnUseCase,
+  ReceiveReturnUseCase,
+} from "../modules/returns/application/index.js";
+import { createReturnsRoutes } from "../modules/returns/http/index.js";
+import type {
   GetSettlementUseCase,
   SyncSettlementUseCase,
 } from "../modules/settlement/application/index.js";
@@ -69,6 +76,10 @@ export function createApp(deps: {
   requestRefundUseCase: RequestRefundUseCase;
   processRefundUseCase: ProcessRefundUseCase;
   rejectRefundUseCase: RejectRefundUseCase;
+  createReturnRequestUseCase: CreateReturnRequestUseCase;
+  authorizeReturnUseCase: AuthorizeReturnUseCase;
+  receiveReturnUseCase: ReceiveReturnUseCase;
+  inspectReturnUseCase: InspectReturnUseCase;
   createCouponUseCase: CreateCouponUseCase;
   quoteCouponUseCase: QuoteCouponUseCase;
   reserveCouponUseCase: ReserveCouponUseCase;
@@ -119,6 +130,15 @@ export function createApp(deps: {
       requestRefundUseCase: deps.requestRefundUseCase,
       processRefundUseCase: deps.processRefundUseCase,
       rejectRefundUseCase: deps.rejectRefundUseCase,
+    }),
+  );
+  app.route(
+    "/",
+    createReturnsRoutes({
+      createReturnRequestUseCase: deps.createReturnRequestUseCase,
+      authorizeReturnUseCase: deps.authorizeReturnUseCase,
+      receiveReturnUseCase: deps.receiveReturnUseCase,
+      inspectReturnUseCase: deps.inspectReturnUseCase,
     }),
   );
   app.route(

@@ -202,6 +202,27 @@ export type CouponRedemptionsTable = {
   updated_at: TimestampColumn;
 };
 
+export type ReturnRequestsTable = {
+  id: string;
+  order_id: string;
+  fulfillment_id: string;
+  idempotency_key: string;
+  status: string;
+  rma_number: string | null;
+  reason: string;
+  items: unknown;
+  restockable_items: unknown | null;
+  inspection_note: string | null;
+  rejection_reason: string | null;
+  requested_at: TimestampColumn;
+  authorized_at: TimestampColumn | null;
+  received_at: TimestampColumn | null;
+  inspected_at: TimestampColumn | null;
+  version: number;
+  created_at: TimestampColumn;
+  updated_at: TimestampColumn;
+};
+
 export type KyselyMigrationTable = {
   name: string;
   timestamp: TimestampColumn;
@@ -224,6 +245,7 @@ export type Database = {
   outbox_events: OutboxEventsTable;
   payments: PaymentsTable;
   refunds: RefundsTable;
+  return_requests: ReturnRequestsTable;
   settlements: SettlementsTable;
   kysely_migration: KyselyMigrationTable;
   kysely_migration_lock: KyselyMigrationLockTable;
@@ -262,3 +284,6 @@ export type CouponUpdate = Updateable<CouponsTable>;
 export type CouponRedemptionRow = Selectable<CouponRedemptionsTable>;
 export type CouponRedemptionInsert = Insertable<CouponRedemptionsTable>;
 export type CouponRedemptionUpdate = Updateable<CouponRedemptionsTable>;
+export type ReturnRequestRow = Selectable<ReturnRequestsTable>;
+export type ReturnRequestInsert = Insertable<ReturnRequestsTable>;
+export type ReturnRequestUpdate = Updateable<ReturnRequestsTable>;

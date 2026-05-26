@@ -37,6 +37,11 @@ export function createRouteTestApp(overrides: RouteTestAppOverrides = {}) {
     requestRefundUseCase: overrides.requestRefundUseCase ?? unexpectedUseCase("refund"),
     processRefundUseCase: overrides.processRefundUseCase ?? unexpectedUseCase("refund"),
     rejectRefundUseCase: overrides.rejectRefundUseCase ?? unexpectedUseCase("refund"),
+    createReturnRequestUseCase:
+      overrides.createReturnRequestUseCase ?? unexpectedUseCase("returns"),
+    authorizeReturnUseCase: overrides.authorizeReturnUseCase ?? unexpectedUseCase("returns"),
+    receiveReturnUseCase: overrides.receiveReturnUseCase ?? unexpectedUseCase("returns"),
+    inspectReturnUseCase: overrides.inspectReturnUseCase ?? unexpectedUseCase("returns"),
     createCouponUseCase: overrides.createCouponUseCase ?? unexpectedUseCase("promotion"),
     quoteCouponUseCase: overrides.quoteCouponUseCase ?? unexpectedUseCase("promotion"),
     reserveCouponUseCase: overrides.reserveCouponUseCase ?? unexpectedUseCase("promotion"),
