@@ -110,9 +110,9 @@ evidence; `outbox_events` handles integration publishing, retry, and delivery fa
 State-changing usecases keep domain event append, projection update, and outbox writes in the same
 short transaction.
 
-This repository does not implement an ERP or accounting module. It leaves immutable
-payment/refund/inventory/fulfillment events that can be transformed later into downstream accounting
-events or ERP adapters.
+This repository does not embed ERP or accounting features in the core. Instead, immutable
+payment/refund/inventory/fulfillment events provide a consistent integration point for journal
+generation, ERP sync, settlement, and audit systems.
 
 ## How New Requirements Fit
 

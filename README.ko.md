@@ -113,8 +113,9 @@ projection입니다.
 전이 usecase는 짧은 transaction 안에서 domain event append, projection update, outbox write를 함께
 처리합니다.
 
-이 구조는 ERP나 회계 시스템을 직접 구현하지 않습니다. 대신 payment/refund/inventory/fulfillment의
-불변 이벤트를 downstream accounting event나 ERP adapter로 변환할 수 있는 근거를 남깁니다.
+ERP나 회계 기능을 이 레포 안에 직접 넣지는 않습니다. 대신 payment/refund/inventory/fulfillment에서
+발생한 불변 이벤트를 일관된 연동 지점으로 남겨, 회계 전표 생성, ERP 동기화, 정산/감사 시스템에
+붙이기 쉽게 합니다.
 
 ## 변경 요구사항에 대응하는 방식
 
