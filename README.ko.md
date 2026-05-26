@@ -144,8 +144,10 @@ src/modules/fulfillment/ 결제 이후 출고, 운송장, 배송 상태 동기�
 
 이 구조는 특정 함수형 framework를 전제로 하지 않지만, TypeScript 안에서 유지 가능한 함수형
 스타일을 일부 차용합니다. Domain 계층에서는 class hierarchy보다 순수 함수, 불변 상태 전이,
-discriminated union, exhaustive check, `Result` 반환을 선호합니다. `Effect`, `fp-ts` 같은 별도
-effect system을 도입하지 않고, 표준 TypeScript로 경계와 상태를 명시하는 쪽을 선택합니다.
+discriminated union, exhaustive check, `Result` 반환을 선호합니다. 큰 batch나 상태 동기화처럼
+처리 대상이 커질 수 있는 흐름은 필요할 때 `AsyncIterable`로 표현해 unbounded array load를 피합니다.
+`Effect`, `fp-ts` 같은 별도 effect system을 도입하지 않고, 표준 TypeScript로 경계와 상태를
+명시하는 쪽을 선택합니다.
 
 트랜잭션 경계는 application usecase에서 명시적으로 잡습니다. Domain은 transaction을 알지 못하고,
 Kysely transaction도 application 밖으로 새지 않습니다. 상태 변경과 outbox write는 짧은

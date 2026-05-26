@@ -141,8 +141,9 @@ Each layer has a narrow role:
 The structure borrows a practical subset of functional programming style without depending on a
 specific FP framework. In the domain layer, the code favors pure functions, immutable state
 transitions, discriminated unions, exhaustive checks, and `Result` returns over class hierarchies.
-It does not introduce an effect system such as `Effect` or `fp-ts`; the goal is explicit boundaries
-and state modeling with standard TypeScript.
+For large batch or status sync flows, it uses `AsyncIterable` where useful to avoid unbounded array
+loads. It does not introduce an effect system such as `Effect` or `fp-ts`; the goal is explicit
+boundaries and state modeling with standard TypeScript.
 
 Transaction boundaries are explicit in application usecases. Domain code does not know about
 transactions, and Kysely transactions do not leak past infrastructure adapters. State changes and
