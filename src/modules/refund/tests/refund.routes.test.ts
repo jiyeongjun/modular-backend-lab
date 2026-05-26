@@ -92,6 +92,12 @@ function createTestApp(overrides: {
     rejectRefundUseCase:
       overrides.rejectRefundUseCase ??
       (async () => ok({ refund: createRefund({ status: "REQUESTED" }), idempotent: false })),
+    syncSettlementUseCase: async () => {
+      throw new Error("unexpected settlement route call");
+    },
+    getSettlementUseCase: async () => {
+      throw new Error("unexpected settlement route call");
+    },
   });
 }
 

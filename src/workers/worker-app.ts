@@ -6,6 +6,7 @@ import { createBullMqEventPublisher } from "../infra/queue/bullmq/bullmq-publish
 import { runFulfillmentStatusSyncerJob } from "../jobs/fulfillment-status-syncer/fulfillment-status-syncer.job.js";
 import { runInventoryReservationExpirerJob } from "../jobs/inventory-reservation-expirer/inventory-reservation-expirer.job.js";
 import { runOutboxPublisherJob } from "../jobs/outbox-publisher/outbox-publisher.job.js";
+import { runSettlementSyncerJob } from "../jobs/settlement-syncer/settlement-syncer.job.js";
 import {
   createSyncFulfillmentCarrierStatusUseCase,
   createSyncFulfillmentStatusesUseCase,
@@ -21,6 +22,14 @@ import {
   createKyselyInventoryUnitOfWork,
 } from "../modules/inventory/infra/index.js";
 import { createKyselyOutboxRepository } from "../modules/order/infra/index.js";
+import {
+  createSyncPendingSettlementsUseCase,
+  createSyncSettlementUseCase,
+} from "../modules/settlement/application/index.js";
+import {
+  createKyselySettlementSourceReader,
+  createKyselySettlementUnitOfWork,
+} from "../modules/settlement/infra/index.js";
 
 async function main(): Promise<void> {
   const jobName = process.argv[2];
@@ -51,6 +60,23 @@ async function main(): Promise<void> {
       await runFulfillmentStatusSyncerJob({
         syncFulfillmentStatusesUseCase: createSyncFulfillmentStatusesUseCase({
           reader: createKyselyFulfillmentReader(db),
+          syncOne,
+        }),
+        logger,
+      });
+      return;
+    }
+
+    if (jobName === "settlement-syncer") {
+      const sourceReader = createKyselySettlementSourceReader(db);
+      const syncOne = createSyncSettlementUseCase({
+        sourceReader,
+        uow: createKyselySettlementUnitOfWork(db),
+        now: () => new Date(),
+      });
+      await runSettlementSyncerJob({
+        syncPendingSettlementsUseCase: createSyncPendingSettlementsUseCase({
+          sourceReader,
           syncOne,
         }),
         logger,

@@ -146,6 +146,22 @@ export type RefundsTable = {
   updated_at: TimestampColumn;
 };
 
+export type SettlementsTable = {
+  id: string;
+  order_id: string;
+  payment_id: string;
+  status: string;
+  gross_amount: number;
+  refunded_amount: number;
+  net_amount: number;
+  currency: string;
+  delivered_at: TimestampColumn | null;
+  ready_at: TimestampColumn | null;
+  version: number;
+  created_at: TimestampColumn;
+  updated_at: TimestampColumn;
+};
+
 export type KyselyMigrationTable = {
   name: string;
   timestamp: TimestampColumn;
@@ -166,6 +182,7 @@ export type Database = {
   outbox_events: OutboxEventsTable;
   payments: PaymentsTable;
   refunds: RefundsTable;
+  settlements: SettlementsTable;
   kysely_migration: KyselyMigrationTable;
   kysely_migration_lock: KyselyMigrationLockTable;
 };
@@ -194,3 +211,6 @@ export type FulfillmentUpdate = Updateable<FulfillmentsTable>;
 export type RefundRow = Selectable<RefundsTable>;
 export type RefundInsert = Insertable<RefundsTable>;
 export type RefundUpdate = Updateable<RefundsTable>;
+export type SettlementRow = Selectable<SettlementsTable>;
+export type SettlementInsert = Insertable<SettlementsTable>;
+export type SettlementUpdate = Updateable<SettlementsTable>;

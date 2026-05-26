@@ -55,8 +55,8 @@ checks) are treated as operating units.
 
 The domain layer favors pure functions, immutable state transitions, discriminated unions,
 exhaustive checks, and `Result` returns over inheritance-heavy object models. Large batch or status
-sync flows use `AsyncIterable` where the input can grow. Rather than introducing a separate effect
-system, boundaries and state are modeled with standard TypeScript.
+sync flows use `AsyncIterable` where the input can grow. Rather than introducing a separate
+functional library, boundaries and state are modeled with standard TypeScript.
 
 ### State Changes And Ledgers
 
@@ -65,7 +65,7 @@ system, boundaries and state are modeled with standard TypeScript.
   explicit UnitOfWork transactions.
 - Current tables are projections for reads and idempotency, while `outbox_events` is the integration
   publishing queue.
-- Order, payment, inventory, fulfillment, and refund keep append-only domain event streams as the
+- Order, payment, inventory, fulfillment, refund, and settlement keep append-only domain event streams as the
   basis for state changes.
 
 ### Performance-Conscious Design
@@ -87,23 +87,6 @@ system, boundaries and state are modeled with standard TypeScript.
 - Dependencies use exact versions and a lockfile, with Node Active LTS documented as policy.
 - Tests are added by risk and observable behavior, not file count.
 
-## Tech Stack
-
-- Node.js 24 Active LTS
-- TypeScript ESM, strict mode
-- pnpm, exact dependency saves
-- Hono, `@hono/node-server`
-- PostgreSQL, Kysely, `pg`
-- Zod boundary validation
-- Toss Payments adapter behind a payment gateway port
-- Pino JSON logging
-- OpenTelemetry, Prometheus metrics, Grafana stack
-- BullMQ + Valkey locally
-- SQS documented as the AWS managed queue alternative
-- Vitest, Testcontainers
-- Biome, dependency-cruiser
-- Custom convention scanner
-
 ## Boundary Roles
 
 Hono stays as a delivery adapter. Hono Context never enters application or domain code.
@@ -118,19 +101,20 @@ emit metrics, or start traces directly.
 
 ## Event Sourcing And Projections
 
-Flows tied to money, stock, settlement evidence, or delivery state use append-only
+Flows tied to money, stock, settlement readiness, or delivery state use append-only
 `domain_events` as the business ledger. Current tables such as `orders`, `payments`,
-`inventory_items`, `fulfillments`, and `refunds` are projections for API responses, idempotency
-lookups, and batch scans.
+`inventory_items`, `fulfillments`, `refunds`, and `settlements` are projections for API responses,
+idempotency lookups, and batch scans.
 
 `outbox_events` is not the event store. `domain_events` records aggregate state and audit/accounting
 evidence; `outbox_events` handles integration publishing, retry, and delivery failure isolation.
 State-changing usecases keep domain event append, projection update, and outbox writes in the same
 short transaction.
 
-This repository does not embed ERP or accounting features in the core. Instead, immutable
-payment/refund/inventory/fulfillment events provide a consistent integration point for journal
-generation, ERP sync, settlement, and audit systems.
+This repository does not embed ERP or accounting features in the core. `settlement` is a generic
+module that combines payment, refund, and delivery events into order-level settlement readiness.
+Company-specific rules such as journal generation, tax, fees, payouts, or ERP sync should live in a
+separate adapter or downstream system that reads these events and projections.
 
 ## How Requirements Grow
 
@@ -175,6 +159,7 @@ src/modules/payment/     payment lifecycle event stream behind a Toss Payments a
 src/modules/checkout/    order validation, inventory, payment, and compensation orchestration reference
 src/modules/fulfillment/ fulfillment, label, and shipment status event stream with projection
 src/modules/refund/      refund request, approval, PG refund, restock, and completion event stream
+src/modules/settlement/  order-level settlement readiness from payment, refund, and delivery events
 ```
 
 Each module follows the same layer shape:
@@ -206,6 +191,21 @@ Transaction boundaries are explicit in application usecases. Domain code does no
 transactions, and Kysely transactions do not leak past infrastructure adapters. Domain event append,
 current projection update, and outbox writes happen together inside short UnitOfWork transactions,
 while external calls such as payment or carrier API requests happen outside DB transactions.
+
+## Tech Stack And Rationale
+
+- Node.js 24 Active LTS: the target workload is IO-bound APIs and workers waiting on PostgreSQL, payment providers, carriers, queues, and observability exporters. Node's event-loop based nonblocking IO is a good fit for handling many concurrent waits without tying up one OS thread per request. CPU-bound work should move to queues/workers, and multicore usage is handled through horizontally scaled stateless processes. This is not a claim that Node is categorically better than Java; it fits this repository's small, explicit adapter model.
+- TypeScript ESM, strict mode: domain states, commands, events, and errors can be modeled with discriminated unions and exhaustive checks so boundary drift is caught early by the compiler.
+- pnpm, exact dependency saves: lockfiles and exact versions keep installs reproducible.
+- Hono, `@hono/node-server`: a small HTTP API surface keeps the framework as a thin delivery adapter.
+- PostgreSQL, Kysely, `pg`: business state needs transactions, constraints, and relational queries; Kysely keeps SQL explicit while DB rows stay separate from domain models.
+- Zod: validation and narrowing are limited to untrusted boundaries such as HTTP, env, and external webhook payloads.
+- Toss Payments adapter: PG integration sits behind a payment gateway port so core usecases do not know provider SDK or HTTP details.
+- Pino JSON logging: operational logs are emitted as structured JSON signals.
+- OpenTelemetry, Prometheus, Grafana stack: request and runtime signals are observed outside application/domain logic through standard instrumentation boundaries.
+- BullMQ + Valkey, SQS documentation: local development uses a Redis-compatible queue, while AWS-style deployments can replace the queue adapter with SQS without changing core processors.
+- Vitest, Testcontainers: pure domain/usecase behavior stays in fast unit tests, while repositories and migrations are verified against real PostgreSQL.
+- Biome, dependency-cruiser, custom convention scanner: formatting/lint, import direction, and repository-specific architecture rules are enforced as repeatable quality gates.
 
 ## Local Setup
 
@@ -246,6 +246,12 @@ curl -X POST http://localhost:3000/refunds \
   -d '{"orderId":"order-1","paymentId":"payment-1","amount":10000,"currency":"KRW","reason":"customer request","returnRequired":true,"restock":{"sku":"sku-1","quantity":2},"idempotencyKey":"refund-1"}'
 
 curl -X POST http://localhost:3000/refunds/refund-1/process
+
+curl -X POST http://localhost:3000/settlements/sync \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"order-1"}'
+
+curl http://localhost:3000/settlements/order-1
 ```
 
 Run the outbox job:
@@ -264,6 +270,12 @@ Run the fulfillment status sync job:
 
 ```bash
 pnpm worker:fulfillment-sync
+```
+
+Run the settlement sync job:
+
+```bash
+pnpm worker:settlement-sync
 ```
 
 ## Observability

@@ -30,6 +30,11 @@ import type {
   RequestRefundUseCase,
 } from "../modules/refund/application/index.js";
 import { createRefundRoutes } from "../modules/refund/http/index.js";
+import type {
+  GetSettlementUseCase,
+  SyncSettlementUseCase,
+} from "../modules/settlement/application/index.js";
+import { createSettlementRoutes } from "../modules/settlement/http/index.js";
 import type { AppBindings } from "./context.js";
 import { createErrorHandler } from "./middleware/error-handler.js";
 import { requestLoggerMiddleware } from "./middleware/logger.js";
@@ -56,6 +61,8 @@ export function createApp(deps: {
   requestRefundUseCase: RequestRefundUseCase;
   processRefundUseCase: ProcessRefundUseCase;
   rejectRefundUseCase: RejectRefundUseCase;
+  syncSettlementUseCase: SyncSettlementUseCase;
+  getSettlementUseCase: GetSettlementUseCase;
 }): Hono<AppBindings> {
   const app = new Hono<AppBindings>();
 
@@ -99,6 +106,13 @@ export function createApp(deps: {
       requestRefundUseCase: deps.requestRefundUseCase,
       processRefundUseCase: deps.processRefundUseCase,
       rejectRefundUseCase: deps.rejectRefundUseCase,
+    }),
+  );
+  app.route(
+    "/",
+    createSettlementRoutes({
+      syncSettlementUseCase: deps.syncSettlementUseCase,
+      getSettlementUseCase: deps.getSettlementUseCase,
     }),
   );
 

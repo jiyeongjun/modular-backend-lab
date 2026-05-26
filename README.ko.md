@@ -54,8 +54,8 @@ delivery(HTTP/job/worker 진입점), external integration(PG, ERP, WMS 같은 �
 
 Domain 계층은 객체 상속 구조보다 순수 함수, 불변 상태 전이, discriminated union, exhaustive check,
 `Result` 반환을 기본 스타일로 둡니다. 큰 batch나 상태 동기화처럼 처리 대상이 커질 수 있는 흐름은
-필요할 때 `AsyncIterable`로 표현합니다. 별도 effect system을 도입하기보다 표준 TypeScript로 경계와
-상태를 명시합니다.
+필요할 때 `AsyncIterable`로 표현합니다. 별도 함수형 라이브러리를 도입하기보다 표준 TypeScript로
+경계와 상태를 명시합니다.
 
 ### 상태 변경과 원장
 
@@ -64,8 +64,8 @@ Domain 계층은 객체 상속 구조보다 순수 함수, 불변 상태 전이,
   UnitOfWork transaction 안에서 함께 처리합니다.
 - 현재 상태 테이블은 조회와 idempotency를 위한 projection이며, `outbox_events`는 외부 발행을 위한
   queue입니다.
-- order, payment, inventory, fulfillment, refund는 append-only domain event stream을 기준으로
-  상태 변경 근거를 남깁니다.
+- `order`, `payment`, `inventory`, `fulfillment`, `refund`, `settlement` 모듈은 append-only domain
+  event stream을 기준으로 상태 변경 근거를 남깁니다.
 
 ### 성능을 의식한 경계
 
@@ -87,23 +87,6 @@ Domain 계층은 객체 상속 구조보다 순수 함수, 불변 상태 전이,
 - 의존성은 exact version과 lockfile로 고정하고, Node Active LTS 정책을 문서화했습니다.
 - 테스트는 파일 수가 아니라 위험도와 관찰 가능한 동작 기준으로 추가합니다.
 
-## 기술 스택
-
-- Node.js 24 Active LTS
-- TypeScript ESM, strict mode
-- pnpm, exact dependency saves
-- Hono, `@hono/node-server`
-- PostgreSQL, Kysely, `pg`
-- Zod boundary validation
-- Toss Payments adapter behind a payment gateway port
-- Pino JSON logging
-- OpenTelemetry, Prometheus metrics, Grafana stack
-- BullMQ + Valkey locally
-- SQS documented as the AWS managed queue alternative
-- Vitest, Testcontainers
-- Biome, dependency-cruiser
-- Custom convention scanner
-
 ## 경계의 역할
 
 Hono는 HTTP 요청/응답만 다루는 delivery adapter입니다. Hono Context는 application/domain
@@ -120,19 +103,20 @@ metrics, traces를 직접 수행하지 않습니다.
 
 ## Event Sourcing과 projection
 
-주문, 결제, 재고, 배송, 환불처럼 돈, 재고, 정산 근거와 연결되는 흐름은 append-only
+주문, 결제, 재고, 배송, 환불, 정산처럼 돈, 재고, 운영 근거와 연결되는 흐름은 append-only
 `domain_events`를 상태 변경의 원장으로 둡니다. `orders`, `payments`, `inventory_items`,
-`fulfillments`, `refunds` 같은 현재 상태 테이블은 API 응답, idempotency lookup, batch scan을 위한
-projection입니다.
+`fulfillments`, `refunds`, `settlements` 같은 현재 상태 테이블은 API 응답, idempotency lookup,
+batch scan을 위한 projection입니다.
 
 `outbox_events`는 event store가 아닙니다. `domain_events`는 aggregate 상태와 감사/회계 근거를 위한
 원장이고, `outbox_events`는 외부 시스템 발행 실패와 재시도를 다루는 integration queue입니다. 상태
 전이 usecase는 짧은 transaction 안에서 domain event append, projection update, outbox write를 함께
 처리합니다.
 
-ERP나 회계 기능을 이 레포 안에 직접 넣지는 않습니다. 대신 payment/refund/inventory/fulfillment에서
-발생한 불변 이벤트를 일관된 연동 지점으로 남겨, 회계 전표 생성, ERP 동기화, 정산/감사 시스템에
-붙이기 쉽게 합니다.
+ERP나 회계 기능은 이 레포 안에 직접 넣지 않습니다. `settlement`는 결제, 환불, 배송 완료 이벤트를
+모아 주문별 정산 준비 상태를 만드는 범용 모듈입니다. 회계 전표, 세금, 수수료, 지급, ERP 동기화처럼
+회사마다 달라지는 규칙은 이 이벤트와 projection을 읽는 별도 adapter나 downstream system에서
+다루는 편이 낫습니다.
 
 ## 요구사항이 확장되는 방식
 
@@ -173,6 +157,7 @@ src/modules/payment/     Toss Payments adapter 뒤의 결제 lifecycle event str
 src/modules/checkout/    주문 검증, 재고 예약, 결제 승인, 보상 흐름 orchestration
 src/modules/fulfillment/ 출고, 운송장, 배송 상태 event stream과 projection
 src/modules/refund/      환불 요청, 승인, PG 환불, 재입고, 완료 event stream
+src/modules/settlement/  결제, 환불, 배송 이벤트에서 만든 주문별 정산 준비 상태 projection
 ```
 
 각 모듈은 같은 layer shape를 따릅니다.
@@ -205,6 +190,21 @@ src/modules/refund/      환불 요청, 승인, PG 환불, 재입고, 완료 eve
 Kysely transaction도 application 밖으로 새지 않습니다. domain event append, current projection
 update, outbox write는 짧은 UnitOfWork transaction 안에서 함께 처리하며, 결제/배송사 API 같은 외부
 호출은 DB transaction 밖에서 수행합니다.
+
+## 기술 스택과 선택 이유
+
+- Node.js 24 Active LTS: 이 레포의 기본 workload는 PostgreSQL, 결제대행사, 배송사, queue, observability처럼 IO 대기가 많은 API와 worker입니다. Node의 event loop 기반 non-blocking IO는 요청마다 OS thread를 오래 점유하지 않고 많은 동시 대기를 처리하기에 적합합니다. CPU-bound 작업은 queue/worker로 분리하고, 멀티코어 활용과 배포 확장은 stateless process를 수평 확장하는 전제로 둡니다. Java보다 항상 낫다는 주장이 아니라, 이 레포의 작고 명시적인 adapter 구조와 잘 맞는 선택입니다.
+- TypeScript ESM, strict mode: domain state, command, event, error를 discriminated union과 exhaustive check로 모델링해 boundary drift를 컴파일 단계에서 먼저 발견하기 위한 선택입니다.
+- pnpm, exact dependency saves: lockfile과 exact version으로 재현 가능한 설치를 우선합니다.
+- Hono, `@hono/node-server`: HTTP framework를 얇은 delivery adapter로 유지하기 위해 작은 API surface를 가진 라우터를 사용합니다.
+- PostgreSQL, Kysely, `pg`: transaction, constraint, relational query가 필요한 비즈니스 상태를 PostgreSQL에 두고, Kysely로 SQL 경계를 명시하면서 DB row와 domain model을 분리합니다.
+- Zod: HTTP/env/external webhook payload 같은 untrusted boundary에서만 validation과 narrowing을 수행합니다.
+- Toss Payments adapter: PG 연동은 payment gateway port 뒤에 둬 core usecase가 provider SDK나 HTTP 세부사항을 알지 않게 합니다.
+- Pino JSON logging: 운영 로그를 구조화된 JSON signal로 남기기 위한 선택입니다.
+- OpenTelemetry, Prometheus, Grafana stack: application code와 domain logic 바깥에서 request/runtime signal을 관찰하기 위한 표준 instrumentation 경계입니다.
+- BullMQ + Valkey, SQS 문서화: local 개발은 Redis-compatible queue로 재현하고, AWS-style 배포에서는 queue adapter를 SQS로 교체할 수 있게 core processor를 분리합니다.
+- Vitest, Testcontainers: 순수 domain/usecase는 빠른 unit test로, repository와 migration은 실제 PostgreSQL 기반 integration test로 검증합니다.
+- Biome, dependency-cruiser, custom convention scanner: formatting/lint, import direction, repo-specific architecture rule을 반복 가능한 quality gate로 묶습니다.
 
 ## 로컬 실행
 
@@ -245,6 +245,12 @@ curl -X POST http://localhost:3000/refunds \
   -d '{"orderId":"order-1","paymentId":"payment-1","amount":10000,"currency":"KRW","reason":"customer request","returnRequired":true,"restock":{"sku":"sku-1","quantity":2},"idempotencyKey":"refund-1"}'
 
 curl -X POST http://localhost:3000/refunds/refund-1/process
+
+curl -X POST http://localhost:3000/settlements/sync \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"order-1"}'
+
+curl http://localhost:3000/settlements/order-1
 ```
 
 Outbox job 실행:
@@ -263,6 +269,12 @@ Fulfillment status sync job 실행:
 
 ```bash
 pnpm worker:fulfillment-sync
+```
+
+정산 동기화 job 실행:
+
+```bash
+pnpm worker:settlement-sync
 ```
 
 ## 관측성

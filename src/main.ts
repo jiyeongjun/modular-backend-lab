@@ -55,6 +55,14 @@ import {
   createRefundInventoryAdapter,
   createRefundPaymentAdapter,
 } from "./modules/refund/infra/index.js";
+import {
+  createGetSettlementUseCase,
+  createSyncSettlementUseCase,
+} from "./modules/settlement/application/index.js";
+import {
+  createKyselySettlementSourceReader,
+  createKyselySettlementUnitOfWork,
+} from "./modules/settlement/infra/index.js";
 import { uuidGenerator } from "./shared/id/index.js";
 
 const config = loadConfig();
@@ -169,6 +177,16 @@ const rejectRefundUseCase = createRejectRefundUseCase({
   uow: refundUow,
   now: () => new Date(),
 });
+const settlementUow = createKyselySettlementUnitOfWork(db);
+const settlementSourceReader = createKyselySettlementSourceReader(db);
+const syncSettlementUseCase = createSyncSettlementUseCase({
+  sourceReader: settlementSourceReader,
+  uow: settlementUow,
+  now: () => new Date(),
+});
+const getSettlementUseCase = createGetSettlementUseCase({
+  uow: settlementUow,
+});
 const app = createApp({
   logger,
   metrics: createMetricsRegistry(),
@@ -187,6 +205,8 @@ const app = createApp({
   requestRefundUseCase,
   processRefundUseCase,
   rejectRefundUseCase,
+  syncSettlementUseCase,
+  getSettlementUseCase,
 });
 
 const server = serve(
