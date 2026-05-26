@@ -1,12 +1,14 @@
 # modular-backend-lab
 
-A modular TypeScript backend reference architecture for separating concerns across complex business domains and building modules that are easier to change, extend, and reuse.
+A modular TypeScript backend reference architecture for backends where policies, edge cases, and
+external integrations accumulate across business domains. Business flows are modeled as independent
+modules, and stateful areas record changes through an event ledger and projections.
 
 [한국어 문서](./README.ko.md)
 
 ## Architecture Summary
 
-The organizing rule is explicit: HTTP, database, queue, scheduler, and telemetry concerns stay in outer adapters, while business state and rules stay in the domain/application core.
+The organizing rule is explicit: business state and rules stay in the domain/application core, while HTTP, database, queue, scheduler, and telemetry concerns stay in outer adapters.
 
 ```txt
 HTTP / Workers / Scheduler
@@ -31,22 +33,31 @@ Infrastructure adapters
 - Outbox events = integration publishing queue
 - TypeScript compiler = first-line architecture guard
 
-## Design Philosophy
+## Design Principles
 
-This repository is organized for backend systems where requirements grow across multiple business
-domains. It keeps domain/application code portable, infrastructure adapter-based, transactions
-explicit, boundary validation typed, and quality gates repeatable.
+This repository focuses less on framework mechanics and more on making change locations explicit as
+requirements grow. Domain rules, usecase orchestration, persistence, delivery, and external
+integrations are separated, with event ledger, projections, outbox, and quality gates treated as
+repeatable operating units.
 
-### Safety
+### Boundaries And Types
 
 - TypeScript strict mode, `noUncheckedIndexedAccess`, and `exactOptionalPropertyTypes` provide early
   compile-time feedback.
 - Zod is limited to boundary validation for HTTP, env, and external payloads.
 - Expected business failures return `Result` instead of exceptions.
-- State changes append `domain_events`, update current projections, and write outbox rows inside
-  explicit UnitOfWork transactions.
 - dependency-cruiser and `scripts/convention-scan.ts` check framework/infra leakage, unsafe casts,
   and weakened strictness.
+
+### State Changes And Ledgers
+
+- Domain functions receive input and return new state plus domain events without doing IO.
+- State changes append `domain_events`, update current projections, and write outbox rows inside
+  explicit UnitOfWork transactions.
+- Current tables are projections for reads and idempotency, while `outbox_events` is the integration
+  publishing queue.
+- Order, payment, inventory, fulfillment, and refund keep append-only domain event streams as the
+  basis for state changes.
 
 ### Performance-Conscious Design
 
@@ -62,8 +73,6 @@ explicit, boundary validation typed, and quality gates repeatable.
   as modules grow.
 - Modules center on domain/application/ports so the core can remain reusable when HTTP, DB, or queue
   adapters differ.
-- Order, payment, inventory, fulfillment, and refund keep append-only domain event streams as the
-  basis for state changes, while current tables serve reads and idempotency lookups.
 - `AGENTS.md`, `docs/`, and `ai/skills/` document future AI/human maintenance rules.
 - Biome, dependency-cruiser, convention scanner, and CI quality gates provide repeatable verification.
 - Dependencies use exact versions and a lockfile, with Node Active LTS documented as policy.
@@ -86,9 +95,9 @@ explicit, boundary validation typed, and quality gates repeatable.
 - Biome, dependency-cruiser
 - Custom convention scanner
 
-## Why These Boundaries
+## Boundary Roles
 
-Hono stays as a thin delivery adapter. Hono Context never enters application or domain code.
+Hono stays as a delivery adapter. Hono Context never enters application or domain code.
 
 Kysely provides typed SQL but remains a persistence adapter. DB rows are explicitly mapped to domain
 models.
@@ -100,7 +109,7 @@ emit metrics, or start traces directly.
 
 ## Event Sourcing And Projections
 
-Modules tied to money, stock, settlement evidence, or delivery state use append-only
+Flows tied to money, stock, settlement evidence, or delivery state use append-only
 `domain_events` as the business ledger. Current tables such as `orders`, `payments`,
 `inventory_items`, `fulfillments`, and `refunds` are projections for API responses, idempotency
 lookups, and batch scans.
@@ -114,32 +123,26 @@ This repository does not embed ERP or accounting features in the core. Instead, 
 payment/refund/inventory/fulfillment events provide a consistent integration point for journal
 generation, ERP sync, settlement, and audit systems.
 
-## How New Requirements Fit
+## How Requirements Grow
 
-The expected flexibility here does not mean new requirements require no code changes. It means the
-change location should be explicit: domain, application orchestration, port, adapter, or projection.
-The goal is to keep the affected surface small and reviewable.
+Business backends usually become complex through many small policies, edge cases, and integrations
+rather than one large feature. This structure is meant to give those changes a clear home without
+spreading the change across unrelated flows.
 
-Examples:
-
-- Partial refunds, exchanges, or return inspection policies should extend `refund/domain` with new
-  states and events, then let `process-refund` orchestrate the new transition. PG and inventory calls
-  stay behind existing ports.
-- ERP journal integration should not place ERP SDKs in domain/application code. An accounting
-  adapter/job can transform `PaymentAuthorized`, `RefundPaymentRefunded`,
-  `InventoryReservationCommitted`, `InventoryRestocked`, and `FulfillmentDelivered` from
-  `domain_events` or outbox-published events.
-- A new payment provider should add a new `PaymentGateway` adapter instead of replacing payment core.
-  Provider-specific responses are normalized at the adapter boundary, while payment state changes
-  remain in the same domain event stream.
-- Warehouse, lot, or serial-number inventory requirements should extend the `inventory` aggregate
-  key, event payloads, and projections. Checkout continues to call the inventory application port
-  without coupling to payment or HTTP details.
-- New operations screens or reports should add current-table projections or separate read models
-  from `domain_events`, instead of bending the domain model around a query shape.
-- New loyalty, coupon, or settlement modules should follow the same `src/modules/{module}` layer
-  shape. Cross-module links should use domain events, application ports, outbox jobs, or explicit
-  orchestration, not imports from another module's `infra` or `http` layer.
+- Policy changes extend domain events and state transitions. For example, partial refunds,
+  exchanges, and return inspection can be modeled in `refund`, while application usecases coordinate
+  the workflow.
+- Process changes add orchestration. Manual approval before refunds, automatic settlement after
+  delivery, or compensation for inventory shortages can be connected through usecases, jobs, and
+  outbox events without coupling modules directly.
+- External systems attach through ports and adapters. PGs, ERPs, WMSs, carriers, and notification
+  systems stay outside the core, with adapters translating internal events and commands to their
+  APIs.
+- Operations screens and reports use projections/read models. Query requirements should not bend the
+  domain model; they can be built from `domain_events` or current tables.
+- New domains attach as independent modules. Loyalty, coupon, and settlement modules can follow the
+  same layer shape and integrate through domain events, application ports, outbox jobs, or explicit
+  orchestration.
 
 ## Folder Structure
 

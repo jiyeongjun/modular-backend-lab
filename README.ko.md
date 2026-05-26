@@ -1,12 +1,14 @@
 # modular-backend-lab
 
-복잡한 요구사항이 여러 비즈니스 도메인에 흩어진 백엔드 시스템에서 관심사를 분리하고, 변경, 확장, 재사용이 쉬운 모듈을 구성하는 TypeScript 아키텍처 예제입니다.
+정책, 예외 케이스, 외부 연동이 여러 비즈니스 도메인에 누적되는 백엔드를 위한 모듈러 TypeScript
+아키텍처 예제입니다. 각 비즈니스 흐름은 독립 모듈로 분리하고, 상태 변경이 중요한 영역은 이벤트
+원장과 projection으로 기록합니다.
 
 [English README](./README.en.md)
 
 ## 아키텍처 요약
 
-이 구조의 기준은 명확합니다. HTTP, DB, queue, scheduler, telemetry는 바깥 adapter로 두고, 비즈니스 상태와 규칙은 domain/application core에 둡니다.
+중심 원칙은 명확합니다. 비즈니스 상태와 규칙은 domain/application core에 두고, HTTP, DB, queue, scheduler, telemetry는 바깥 adapter로 둡니다.
 
 ```txt
 HTTP / Workers / Scheduler
@@ -31,30 +33,38 @@ Infrastructure adapters
 - Outbox events = integration publishing queue
 - TypeScript compiler = first-line architecture guard
 
-## 설계 철학
+## 설계 기준
 
-이 레포는 요구사항이 늘어날수록 서로 다른 관심사가 섞이기 쉬운 백엔드에서, domain/application
-core와 adapter를 분리해 변경 범위를 작게 유지하는 구조를 기준으로 합니다. transaction, boundary
-validation, quality gate는 모듈이 늘어나도 반복 가능한 검증 경로로 명시합니다.
+이 레포는 프레임워크 사용법보다 요구사항이 늘어날 때 변경 지점이 어디인지 드러나는 구조에 초점을
+둡니다. 도메인 규칙, usecase orchestration, persistence, delivery, external integration을 분리하고,
+이벤트 원장, projection, outbox, quality gate를 일관된 운영 단위로 둡니다.
 
-### 안전성
+### 경계와 타입
 
 - TypeScript strict mode, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`로 타입 피드백을
   먼저 받습니다.
 - Zod는 HTTP/env/external payload 같은 boundary validation에만 사용합니다.
 - 예상 가능한 비즈니스 실패는 exception이 아니라 `Result`로 반환합니다.
-- 상태 변경은 `domain_events` append, current projection update, outbox write를 explicit
-  UnitOfWork transaction 안에서 함께 처리합니다.
 - dependency-cruiser와 `scripts/convention-scan.ts`가 framework/infra leakage, unsafe casts,
   strictness 약화를 검사합니다.
 
-### 성능 의식
+### 상태 변경과 원장
+
+- Domain 함수는 입력을 받아 새 상태와 domain event를 반환하고, IO는 수행하지 않습니다.
+- 상태 변경은 `domain_events` append, current projection update, outbox write를 explicit
+  UnitOfWork transaction 안에서 함께 처리합니다.
+- 현재 상태 테이블은 조회와 idempotency를 위한 projection이며, `outbox_events`는 외부 발행을 위한
+  queue입니다.
+- order, payment, inventory, fulfillment, refund는 append-only domain event stream을 기준으로
+  상태 변경 근거를 남깁니다.
+
+### 성능을 의식한 경계
 
 - Hono를 얇은 HTTP adapter로 두어 request handling과 coupling을 작게 유지합니다.
 - Kysely를 사용해 heavy ORM abstraction 없이 명시적인 SQL 경계를 유지합니다.
 - 큰 batch workload는 `AsyncIterable`로 streaming 처리하고, concurrency는 명시적으로 제한합니다.
 - Outbox publisher는 외부 publish를 긴 DB transaction 안에서 수행하지 않도록 분리되어 있습니다.
-- Prometheus/OpenTelemetry wiring을 포함해 latency, request count, runtime signal을 관찰할 수 있게
+- Prometheus/OpenTelemetry 구성을 포함해 latency, request count, runtime signal을 관찰할 수 있게
   했습니다.
 
 ### 지속 가능성
@@ -63,12 +73,10 @@ validation, quality gate는 모듈이 늘어나도 반복 가능한 검증 경�
   유지합니다.
 - 모듈은 domain/application/ports를 중심으로 구성되어 HTTP, DB, queue adapter가 달라져도 core 재사용
   가능성을 유지합니다.
-- order, payment, inventory, fulfillment, refund는 append-only domain event stream을 기준으로
-  상태 변경 근거를 남기고, 현재 테이블은 조회와 idempotency를 위한 projection으로 사용합니다.
-- `AGENTS.md`, `docs/`, `ai/skills/`가 future AI/human maintenance rule을 문서화합니다.
+- `AGENTS.md`, `docs/`, `ai/skills/`가 사람과 AI가 따를 유지보수 규칙을 문서화합니다.
 - Biome, dependency-cruiser, convention scanner, CI quality gate가 반복 가능한 검증 경로를 제공합니다.
-- dependency는 exact version과 lockfile로 고정하고, Node Active LTS 정책을 문서화했습니다.
-- 테스트는 파일 수가 아니라 risk와 observable behavior 기준으로 추가합니다.
+- 의존성은 exact version과 lockfile로 고정하고, Node Active LTS 정책을 문서화했습니다.
+- 테스트는 파일 수가 아니라 위험도와 관찰 가능한 동작 기준으로 추가합니다.
 
 ## 기술 스택
 
@@ -87,15 +95,15 @@ validation, quality gate는 모듈이 늘어나도 반복 가능한 검증 경�
 - Biome, dependency-cruiser
 - Custom convention scanner
 
-## 왜 이런 경계를 두는가
+## 경계의 역할
 
-Hono는 HTTP 요청/응답만 다루는 얇은 delivery adapter입니다. Hono Context는 application/domain
+Hono는 HTTP 요청/응답만 다루는 delivery adapter입니다. Hono Context는 application/domain
 코드로 들어가지 않습니다.
 
 Kysely는 typed SQL을 제공하지만 persistence adapter에만 머뭅니다. DB row는 domain model로 직접
 쓰지 않고 mapper를 통해 명시적으로 변환합니다.
 
-Queue backend는 포트 뒤에 격리됩니다. Core processor는 BullMQ, SQS, Redis, Valkey를 직접 알지
+Queue backend는 port 뒤에 격리됩니다. Core processor는 BullMQ, SQS, Redis, Valkey를 직접 알지
 않습니다.
 
 OpenTelemetry와 Grafana stack은 runtime instrumentation 경계입니다. 순수 domain logic은 logging,
@@ -103,9 +111,9 @@ metrics, traces를 직접 수행하지 않습니다.
 
 ## Event Sourcing과 projection
 
-주문, 결제, 재고, 배송, 환불처럼 돈, 재고, 정산 근거와 연결되는 모듈은 append-only
+주문, 결제, 재고, 배송, 환불처럼 돈, 재고, 정산 근거와 연결되는 흐름은 append-only
 `domain_events`를 상태 변경의 원장으로 둡니다. `orders`, `payments`, `inventory_items`,
-`fulfillments`, `refunds` 같은 current table은 API 응답, idempotency lookup, batch scan을 위한
+`fulfillments`, `refunds` 같은 현재 상태 테이블은 API 응답, idempotency lookup, batch scan을 위한
 projection입니다.
 
 `outbox_events`는 event store가 아닙니다. `domain_events`는 aggregate 상태와 감사/회계 근거를 위한
@@ -117,30 +125,22 @@ ERP나 회계 기능을 이 레포 안에 직접 넣지는 않습니다. 대신 
 발생한 불변 이벤트를 일관된 연동 지점으로 남겨, 회계 전표 생성, ERP 동기화, 정산/감사 시스템에
 붙이기 쉽게 합니다.
 
-## 변경 요구사항에 대응하는 방식
+## 요구사항이 확장되는 방식
 
-이 레포가 기대하는 유연성은 "새 요구사항을 아무 수정 없이 처리한다"는 뜻이 아닙니다. 요구사항이
-들어왔을 때 바뀌어야 하는 위치가 domain, application orchestration, port, adapter, projection 중
-어디인지 드러나고, 그 변경 범위를 좁게 유지하는 쪽에 초점을 둡니다.
+비즈니스 백엔드는 보통 하나의 큰 기능보다 작은 정책, 예외 케이스, 외부 연동이 계속 추가되면서
+복잡해집니다. 이 구조는 그런 변화가 들어왔을 때 기존 흐름을 넓게 흔들지 않고, 적절한 모듈과
+계층에 변경을 배치하는 것을 목표로 합니다.
 
-예시는 다음과 같습니다.
-
-- 부분 환불, 교환, 반품 검수 같은 정책이 추가되면 `refund/domain`에 상태와 event를 추가하고,
-  `process-refund` usecase가 새 전이를 orchestration합니다. PG나 재고 시스템 호출은 기존 port 뒤에
-  남깁니다.
-- ERP 전표 연동이 필요해지면 ERP SDK를 domain/application에 넣지 않습니다. `domain_events` 또는
-  outbox로 발행된 `PaymentAuthorized`, `RefundPaymentRefunded`, `InventoryReservationCommitted`,
-  `InventoryRestocked`, `FulfillmentDelivered` 같은 event를 accounting adapter/job에서 변환합니다.
-- 새 PG를 붙이면 payment core를 교체하지 않고 `PaymentGateway` port의 새 adapter를 추가합니다.
-  provider별 응답 차이는 adapter에서 정규화하고, 결제 상태 전이는 기존 domain event stream에 남깁니다.
-- 창고별 재고, lot, serial 추적이 필요해지면 `inventory`의 aggregate key와 event payload,
-  projection을 확장합니다. checkout은 inventory application port를 계속 호출하므로 HTTP나 payment
-  흐름과 직접 얽히지 않습니다.
-- 특정 화면이나 운영 리포트가 필요하면 domain model을 조회용 요구에 맞춰 비틀지 않고, current table
-  projection이나 `domain_events` 기반 별도 read model을 추가합니다.
-- 신규 loyalty, coupon, settlement 같은 모듈은 `src/modules/{module}` 아래 같은 layer shape로 붙이고,
-  다른 모듈의 `infra/http`를 직접 import하지 않습니다. 필요한 연결은 domain event, application port,
-  outbox/job으로 표현합니다.
+- 정책이 바뀌면 domain event와 상태 전이를 확장합니다. 예를 들어 부분 환불, 교환, 반품 검수는
+  `refund`의 상태와 event로 표현하고, 실제 진행 순서는 application usecase가 조율합니다.
+- 업무 절차가 늘어나면 orchestration을 추가합니다. 예를 들어 환불 전 관리자 승인, 배송 완료 후 자동
+  정산, 재고 부족 시 보상 흐름은 여러 모듈을 직접 엮지 않고 usecase, job, outbox를 통해 연결합니다.
+- 외부 시스템이 붙으면 port와 adapter를 추가합니다. PG, ERP, WMS, 배송사, 알림 시스템은 core에 직접
+  들어오지 않고, 내부 event와 command를 외부 API에 맞게 변환하는 adapter로 둡니다.
+- 운영 화면이나 리포트가 필요하면 projection/read model을 추가합니다. 조회 요구 때문에 domain
+  model을 바꾸지 않고, `domain_events`나 current table을 기준으로 필요한 읽기 모델을 구성합니다.
+- 새로운 도메인이 생기면 독립 모듈로 붙입니다. loyalty, coupon, settlement 같은 기능은 같은 layer
+  shape를 따르며, 기존 모듈과는 domain event, application port, outbox/job을 통해 연결합니다.
 
 ## 폴더 구조
 
@@ -161,7 +161,7 @@ ai/skills       operational playbooks for future AI agents
 src/modules/order/       주문 lifecycle event stream과 결제 상태 projection
 src/modules/inventory/   SKU별 재고 이동 ledger, 예약, 해제, 확정, 만료 projection
 src/modules/payment/     Toss Payments adapter 뒤의 결제 lifecycle event stream
-src/modules/checkout/    주문 검증, 재고 예약, 결제 승인, 보상 흐름 orchestration reference
+src/modules/checkout/    주문 검증, 재고 예약, 결제 승인, 보상 흐름 orchestration
 src/modules/fulfillment/ 출고, 운송장, 배송 상태 event stream과 projection
 src/modules/refund/      환불 요청, 승인, PG 환불, 재입고, 완료 event stream
 ```
