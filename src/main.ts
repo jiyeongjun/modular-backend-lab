@@ -45,6 +45,14 @@ import {
   createUnavailablePaymentGateway,
 } from "./modules/payment/infra/index.js";
 import {
+  createCommitCouponRedemptionUseCase,
+  createCreateCouponUseCase,
+  createQuoteCouponUseCase,
+  createReleaseCouponRedemptionUseCase,
+  createReserveCouponUseCase,
+} from "./modules/promotion/application/index.js";
+import { createKyselyPromotionUnitOfWork } from "./modules/promotion/infra/index.js";
+import {
   createProcessRefundUseCase,
   createRejectRefundUseCase,
   createRequestRefundUseCase,
@@ -177,6 +185,29 @@ const rejectRefundUseCase = createRejectRefundUseCase({
   uow: refundUow,
   now: () => new Date(),
 });
+const promotionUow = createKyselyPromotionUnitOfWork(db);
+const createCouponUseCase = createCreateCouponUseCase({
+  uow: promotionUow,
+  now: () => new Date(),
+  generateId: () => uuidGenerator.generate(),
+});
+const quoteCouponUseCase = createQuoteCouponUseCase({
+  uow: promotionUow,
+  now: () => new Date(),
+});
+const reserveCouponUseCase = createReserveCouponUseCase({
+  uow: promotionUow,
+  now: () => new Date(),
+  generateId: () => uuidGenerator.generate(),
+});
+const commitCouponRedemptionUseCase = createCommitCouponRedemptionUseCase({
+  uow: promotionUow,
+  now: () => new Date(),
+});
+const releaseCouponRedemptionUseCase = createReleaseCouponRedemptionUseCase({
+  uow: promotionUow,
+  now: () => new Date(),
+});
 const settlementUow = createKyselySettlementUnitOfWork(db);
 const settlementSourceReader = createKyselySettlementSourceReader(db);
 const syncSettlementUseCase = createSyncSettlementUseCase({
@@ -205,6 +236,11 @@ const app = createApp({
   requestRefundUseCase,
   processRefundUseCase,
   rejectRefundUseCase,
+  createCouponUseCase,
+  quoteCouponUseCase,
+  reserveCouponUseCase,
+  commitCouponRedemptionUseCase,
+  releaseCouponRedemptionUseCase,
   syncSettlementUseCase,
   getSettlementUseCase,
 });

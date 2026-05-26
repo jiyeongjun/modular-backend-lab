@@ -10,6 +10,7 @@
 - Are DB rows mapped explicitly?
 - Are Zod schemas only used at boundaries?
 - Are HTTP routes thin?
+- Do full-app route tests use the route-test app factory instead of duplicating unrelated stubs?
 - Are batch jobs using `AsyncIterable` for large or unbounded work?
 - Is concurrency explicit and bounded?
 - Are queue consumers idempotent where needed?
@@ -21,6 +22,7 @@
 - Are docs updated?
 - Is the design simpler than the problem requires?
 - Is there any premature abstraction?
+- Did scaffolding or helper reuse avoid becoming a hidden framework layer?
 - Is cross-module coupling controlled?
 - Did dependency changes use stable exact versions?
 - Did Biome pass?

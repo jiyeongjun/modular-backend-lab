@@ -1,7 +1,8 @@
 import type { Kysely, Transaction } from "kysely";
 import type { Database } from "../../../infra/db/database.js";
+import { toOutboxEventInsert } from "../../../infra/outbox/outbox-event.mapper.js";
 import type { OutboxRepository } from "../ports/index.js";
-import { toOutboxEvent, toOutboxInsert } from "./outbox.mapper.js";
+import { toOutboxEvent } from "./outbox.mapper.js";
 
 type DbExecutor = Kysely<Database> | Transaction<Database>;
 
@@ -12,7 +13,7 @@ export function createKyselyOutboxRepository(db: DbExecutor): OutboxRepository {
         return;
       }
 
-      await db.insertInto("outbox_events").values(events.map(toOutboxInsert)).execute();
+      await db.insertInto("outbox_events").values(events.map(toOutboxEventInsert)).execute();
     },
 
     async *iterateUnprocessed(options) {

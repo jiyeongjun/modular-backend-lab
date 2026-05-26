@@ -13,14 +13,15 @@ A meaningful change is done when:
 9. Tests are added based on risk.
 10. Trivial tests are avoided.
 11. Docs are updated when conventions or behavior change.
-12. `pnpm typecheck` passes.
-13. `pnpm check` passes.
-14. `pnpm test` passes.
-15. `pnpm arch:check` passes.
-16. `pnpm conventions:scan` passes.
-17. `pnpm build` passes.
-18. TypeScript strictness is preserved.
-19. No unsafe casts or `any` are introduced without a documented reason.
-20. Important domain states/errors/events are represented with precise types.
-21. Exhaustive checks are updated when unions change.
-22. Any checks that cannot run are explicitly reported.
+12. Scaffolding, test factories, and shared mappers do not hide architectural boundaries.
+13. `pnpm typecheck` passes.
+14. `pnpm check` passes.
+15. `pnpm test` passes.
+16. `pnpm arch:check` passes.
+17. `pnpm conventions:scan` passes.
+18. `pnpm build` passes.
+19. TypeScript strictness is preserved.
+20. No unsafe casts or `any` are introduced without a documented reason.
+21. Important domain states/errors/events are represented with precise types.
+22. Exhaustive checks are updated when unions change.
+23. Any checks that cannot run are explicitly reported.

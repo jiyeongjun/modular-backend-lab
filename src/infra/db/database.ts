@@ -162,6 +162,46 @@ export type SettlementsTable = {
   updated_at: TimestampColumn;
 };
 
+export type CouponsTable = {
+  id: string;
+  code: string;
+  status: string;
+  discount_type: string;
+  discount_amount: number | null;
+  discount_basis_points: number | null;
+  max_discount_amount: number | null;
+  currency: string;
+  min_order_amount: number;
+  eligible_skus: unknown | null;
+  max_redemptions: number;
+  redeemed_count: number;
+  starts_at: TimestampColumn;
+  expires_at: TimestampColumn;
+  disabled_at: TimestampColumn | null;
+  version: number;
+  created_at: TimestampColumn;
+  updated_at: TimestampColumn;
+};
+
+export type CouponRedemptionsTable = {
+  id: string;
+  coupon_id: string;
+  coupon_code: string;
+  order_id: string;
+  idempotency_key: string;
+  status: string;
+  order_amount: number;
+  discount_amount: number;
+  currency: string;
+  reserved_at: TimestampColumn;
+  committed_at: TimestampColumn | null;
+  released_at: TimestampColumn | null;
+  release_reason: string | null;
+  version: number;
+  created_at: TimestampColumn;
+  updated_at: TimestampColumn;
+};
+
 export type KyselyMigrationTable = {
   name: string;
   timestamp: TimestampColumn;
@@ -173,6 +213,8 @@ export type KyselyMigrationLockTable = {
 };
 
 export type Database = {
+  coupon_redemptions: CouponRedemptionsTable;
+  coupons: CouponsTable;
   domain_events: DomainEventsTable;
   fulfillments: FulfillmentsTable;
   inventory_items: InventoryItemsTable;
@@ -214,3 +256,9 @@ export type RefundUpdate = Updateable<RefundsTable>;
 export type SettlementRow = Selectable<SettlementsTable>;
 export type SettlementInsert = Insertable<SettlementsTable>;
 export type SettlementUpdate = Updateable<SettlementsTable>;
+export type CouponRow = Selectable<CouponsTable>;
+export type CouponInsert = Insertable<CouponsTable>;
+export type CouponUpdate = Updateable<CouponsTable>;
+export type CouponRedemptionRow = Selectable<CouponRedemptionsTable>;
+export type CouponRedemptionInsert = Insertable<CouponRedemptionsTable>;
+export type CouponRedemptionUpdate = Updateable<CouponRedemptionsTable>;

@@ -18,12 +18,14 @@ or accounting.
 
 ## Steps
 
-1. Create `domain`, `application`, `ports`, `infra`, `http`, and `tests` folders only as needed.
+1. Optionally run `pnpm scaffold:module <module-name>` to create the standard folders and empty
+   boundary indexes.
 2. Model pure domain types and behavior first.
 3. Add usecases and ports before adapters.
 4. Add adapter code behind ports.
 5. Add risk-based tests.
 6. Model states, errors, and events with precise TypeScript unions where useful.
+7. Treat the scaffold as a starting point only; do not generate domain rules from folder names.
 
 ## Files Usually Touched
 
@@ -44,6 +46,7 @@ or accounting.
 - Framework imports in domain/application.
 - Another module's `infra` or `http` imports.
 - DB rows as domain models.
+- Custom framework layers, runtime module registries, or DI containers to hide explicit wiring.
 - `any`, `as any`, broad casts, or non-null assertions to bypass modeling.
 
 ## Definition Of Done

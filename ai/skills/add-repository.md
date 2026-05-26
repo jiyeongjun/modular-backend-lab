@@ -20,8 +20,10 @@ Use when adding a new table-backed persistence adapter.
 2. Add Kysely database types and migration changes.
 3. Write row-to-domain and domain-to-row mappers.
 4. Implement the repository in `infra`.
-5. Add integration tests when behavior is meaningful.
-6. Keep DB row, insert/update, and domain types separate.
+5. Use `src/infra/outbox/outbox-event.mapper.ts` for ordinary `outbox_events` insert conversion
+   when the event shape matches the shared contract.
+6. Add integration tests when behavior is meaningful.
+7. Keep DB row, insert/update, and domain types separate.
 
 ## Files Usually Touched
 
@@ -43,6 +45,7 @@ Use when adding a new table-backed persistence adapter.
 - Kysely imports in application/domain.
 - Long transactions around external calls.
 - Reusing row types as domain models.
+- Moving domain event definitions into infra-only helpers.
 
 ## Definition Of Done
 

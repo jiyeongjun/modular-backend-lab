@@ -1,7 +1,5 @@
-import pino from "pino";
 import { describe, expect, it } from "vitest";
-import { createApp } from "../../../http/app.js";
-import { createMetricsRegistry } from "../../../infra/telemetry/metrics.js";
+import { createRouteTestApp } from "../../../../test/http/create-test-app.js";
 import { err, ok } from "../../../shared/result/index.js";
 import type {
   CancelFulfillmentUseCase,
@@ -59,30 +57,7 @@ function createTestApp(overrides: {
   cancelFulfillmentUseCase?: CancelFulfillmentUseCase;
   syncFulfillmentCarrierStatusUseCase?: SyncFulfillmentCarrierStatusUseCase;
 }) {
-  return createApp({
-    logger: pino({ enabled: false }),
-    metrics: createMetricsRegistry(),
-    payOrderUseCase: async () => {
-      throw new Error("unexpected order route call");
-    },
-    reserveInventoryUseCase: async () => {
-      throw new Error("unexpected inventory route call");
-    },
-    releaseReservationUseCase: async () => {
-      throw new Error("unexpected inventory route call");
-    },
-    commitReservationUseCase: async () => {
-      throw new Error("unexpected inventory route call");
-    },
-    confirmPaymentUseCase: async () => {
-      throw new Error("unexpected payment route call");
-    },
-    cancelPaymentUseCase: async () => {
-      throw new Error("unexpected payment route call");
-    },
-    submitCheckoutUseCase: async () => {
-      throw new Error("unexpected checkout route call");
-    },
+  return createRouteTestApp({
     createFulfillmentUseCase:
       overrides.createFulfillmentUseCase ??
       (async () => ok({ fulfillment: createFulfillment(), idempotent: false })),
@@ -98,21 +73,6 @@ function createTestApp(overrides: {
     syncFulfillmentCarrierStatusUseCase:
       overrides.syncFulfillmentCarrierStatusUseCase ??
       (async () => ok({ fulfillment: createFulfillment(), updated: false })),
-    requestRefundUseCase: async () => {
-      throw new Error("unexpected refund route call");
-    },
-    processRefundUseCase: async () => {
-      throw new Error("unexpected refund route call");
-    },
-    rejectRefundUseCase: async () => {
-      throw new Error("unexpected refund route call");
-    },
-    syncSettlementUseCase: async () => {
-      throw new Error("unexpected settlement route call");
-    },
-    getSettlementUseCase: async () => {
-      throw new Error("unexpected settlement route call");
-    },
   });
 }
 

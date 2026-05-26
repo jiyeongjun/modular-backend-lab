@@ -57,6 +57,10 @@ queue behavior when important, and external systems via sandbox or contract test
 HTTP tests should verify route contracts: request validation, response status, response body shape,
 and error mapping.
 
+When route tests exercise the composed Hono app, use `test/http/create-test-app.ts` so the test
+provides only the usecases it cares about. The factory's default usecases throw if an unrelated route
+is accidentally hit.
+
 Batch/job tests should exercise processors without a real scheduler. Test `AsyncIterable`
 processing, idempotency, retry/failure behavior, and bounded processing.
 

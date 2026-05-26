@@ -31,6 +31,7 @@
     "worker:inventory-expire": "tsx src/workers/worker-app.ts inventory-reservation-expirer",
     "worker:fulfillment-sync": "tsx src/workers/worker-app.ts fulfillment-status-syncer",
     "worker:settlement-sync": "tsx src/workers/worker-app.ts settlement-syncer",
+    "scaffold:module": "tsx scripts/scaffold-module.ts",
     "conventions:scan": "tsx scripts/convention-scan.ts",
     "arch:check": "dependency-cruiser src --config dependency-cruiser.config.cjs",
     "quality": "pnpm typecheck && pnpm check && pnpm test && pnpm arch:check && pnpm conventions:scan && pnpm build",

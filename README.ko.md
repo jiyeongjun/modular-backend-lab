@@ -64,8 +64,8 @@ Domain 계층은 객체 상속 구조보다 순수 함수, 불변 상태 전이,
   UnitOfWork transaction 안에서 함께 처리합니다.
 - 현재 상태 테이블은 조회와 idempotency를 위한 projection이며, `outbox_events`는 외부 발행을 위한
   queue입니다.
-- `order`, `payment`, `inventory`, `fulfillment`, `refund`, `settlement` 모듈은 append-only domain
-  event stream을 기준으로 상태 변경 근거를 남깁니다.
+- `order`, `payment`, `inventory`, `fulfillment`, `refund`, `settlement`, `promotion` 모듈은
+  append-only domain event stream을 기준으로 상태 변경 근거를 남깁니다.
 
 ### 성능을 의식한 경계
 
@@ -103,10 +103,10 @@ metrics, traces를 직접 수행하지 않습니다.
 
 ## Event Sourcing과 projection
 
-주문, 결제, 재고, 배송, 환불, 정산처럼 돈, 재고, 운영 근거와 연결되는 흐름은 append-only
+주문, 결제, 재고, 배송, 환불, 정산, 쿠폰처럼 돈, 재고, 운영 근거와 연결되는 흐름은 append-only
 `domain_events`를 상태 변경의 원장으로 둡니다. `orders`, `payments`, `inventory_items`,
-`fulfillments`, `refunds`, `settlements` 같은 현재 상태 테이블은 API 응답, idempotency lookup,
-batch scan을 위한 projection입니다.
+`fulfillments`, `refunds`, `settlements`, `coupons`, `coupon_redemptions` 같은 현재 상태 테이블은
+API 응답, idempotency lookup, batch scan을 위한 projection입니다.
 
 `outbox_events`는 event store가 아닙니다. `domain_events`는 aggregate 상태와 감사/회계 근거를 위한
 원장이고, `outbox_events`는 외부 시스템 발행 실패와 재시도를 다루는 integration queue입니다. 상태
@@ -126,6 +126,9 @@ ERP나 회계 기능은 이 레포 안에 직접 넣지 않습니다. `settlemen
 
 - 정책이 바뀌면 domain event와 상태 전이를 확장합니다. 예를 들어 부분 환불, 교환, 반품 검수는
   `refund`의 상태와 event로 표현하고, 실제 진행 순서는 application usecase가 조율합니다.
+- 할인 정책이 늘어나면 `promotion`의 coupon policy와 redemption lifecycle로 분리합니다. 예를 들어
+  최소 주문 금액, SKU eligibility, 사용 횟수 제한, checkout 실패 시 예약 해제는 order/payment 내부로
+  흘려보내지 않고 coupon usecase가 담당합니다.
 - 업무 절차가 늘어나면 orchestration을 추가합니다. 예를 들어 환불 전 관리자 승인, 배송 완료 후 자동
   정산, 재고 부족 시 보상 흐름은 여러 모듈을 직접 엮지 않고 usecase, job, outbox를 통해 연결합니다.
 - 외부 시스템이 붙으면 port와 adapter를 추가합니다. PG, ERP, WMS, 배송사, 알림 시스템은 core에 직접
@@ -158,6 +161,7 @@ src/modules/checkout/    주문 검증, 재고 예약, 결제 승인, 보상 흐
 src/modules/fulfillment/ 출고, 운송장, 배송 상태 event stream과 projection
 src/modules/refund/      환불 요청, 승인, PG 환불, 재입고, 완료 event stream
 src/modules/settlement/  결제, 환불, 배송 이벤트에서 만든 주문별 정산 준비 상태 projection
+src/modules/promotion/   쿠폰 할인 정책, quote, 예약, 확정, 해제 event stream
 ```
 
 각 모듈은 같은 layer shape를 따릅니다.
@@ -246,6 +250,18 @@ curl -X POST http://localhost:3000/refunds \
 
 curl -X POST http://localhost:3000/refunds/refund-1/process
 
+curl -X POST http://localhost:3000/promotions/coupons \
+  -H 'content-type: application/json' \
+  -d '{"code":"save-3000","discount":{"type":"FIXED_AMOUNT","amount":{"amount":3000,"currency":"KRW"}},"minOrderAmount":{"amount":5000,"currency":"KRW"},"eligibleSkus":["sku-1"],"maxRedemptions":100,"startsAt":"2026-01-01T00:00:00.000Z","expiresAt":"2026-12-31T00:00:00.000Z"}'
+
+curl -X POST http://localhost:3000/promotions/coupons/quote \
+  -H 'content-type: application/json' \
+  -d '{"code":"save-3000","orderId":"order-1","orderAmount":{"amount":10000,"currency":"KRW"},"skus":["sku-1"]}'
+
+curl -X POST http://localhost:3000/promotions/coupons/reserve \
+  -H 'content-type: application/json' \
+  -d '{"code":"save-3000","orderId":"order-1","orderAmount":{"amount":10000,"currency":"KRW"},"skus":["sku-1"],"idempotencyKey":"coupon-reserve-1"}'
+
 curl -X POST http://localhost:3000/settlements/sync \
   -H 'content-type: application/json' \
   -d '{"orderId":"order-1"}'
@@ -323,6 +339,15 @@ pnpm db:migrate
 pnpm db:rollback
 ```
 
+모듈 폴더 스캐폴드:
+
+```bash
+pnpm scaffold:module promotion
+```
+
+이 명령은 표준 layer 폴더와 빈 `index.ts`만 만듭니다. 도메인 모델, usecase, repository, route는
+요구사항을 읽고 직접 설계해야 합니다.
+
 ## 테스트 전략
 
 테스트는 risk-based, behavior-first입니다. 함수가 있다는 이유만으로 테스트하지 않습니다.
@@ -338,6 +363,11 @@ Docker가 없으면 integration test는 실행 가능한 상태로 남기고 명
 공유하지 않습니다.
 
 Core logic은 usecase, port, domain event를 통해 협력합니다.
+
+반복을 줄이는 보조 도구는 경계 밖에 둡니다. `pnpm scaffold:module <name>`은 폴더 시작점을 만들
+뿐이고, route 테스트는 `test/http/create-test-app.ts`로 검증 대상 usecase만 주입합니다. Outbox row
+insert 변환은 `src/infra/outbox/outbox-event.mapper.ts`를 공유하지만, domain event 정의와 저장
+시점은 각 모듈의 domain/application/infra 흐름에 남깁니다.
 
 큰 batch workload는 `AsyncIterable`을 사용합니다. 일반적인 bounded HTTP read는 `Promise<T>` 또는
 `Promise<T[]>`를 사용합니다.

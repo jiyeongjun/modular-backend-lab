@@ -25,6 +25,14 @@ import type {
 } from "../modules/payment/application/index.js";
 import { createPaymentRoutes } from "../modules/payment/http/index.js";
 import type {
+  CommitCouponRedemptionUseCase,
+  CreateCouponUseCase,
+  QuoteCouponUseCase,
+  ReleaseCouponRedemptionUseCase,
+  ReserveCouponUseCase,
+} from "../modules/promotion/application/index.js";
+import { createPromotionRoutes } from "../modules/promotion/http/index.js";
+import type {
   ProcessRefundUseCase,
   RejectRefundUseCase,
   RequestRefundUseCase,
@@ -61,6 +69,11 @@ export function createApp(deps: {
   requestRefundUseCase: RequestRefundUseCase;
   processRefundUseCase: ProcessRefundUseCase;
   rejectRefundUseCase: RejectRefundUseCase;
+  createCouponUseCase: CreateCouponUseCase;
+  quoteCouponUseCase: QuoteCouponUseCase;
+  reserveCouponUseCase: ReserveCouponUseCase;
+  commitCouponRedemptionUseCase: CommitCouponRedemptionUseCase;
+  releaseCouponRedemptionUseCase: ReleaseCouponRedemptionUseCase;
   syncSettlementUseCase: SyncSettlementUseCase;
   getSettlementUseCase: GetSettlementUseCase;
 }): Hono<AppBindings> {
@@ -106,6 +119,16 @@ export function createApp(deps: {
       requestRefundUseCase: deps.requestRefundUseCase,
       processRefundUseCase: deps.processRefundUseCase,
       rejectRefundUseCase: deps.rejectRefundUseCase,
+    }),
+  );
+  app.route(
+    "/",
+    createPromotionRoutes({
+      createCouponUseCase: deps.createCouponUseCase,
+      quoteCouponUseCase: deps.quoteCouponUseCase,
+      reserveCouponUseCase: deps.reserveCouponUseCase,
+      commitCouponRedemptionUseCase: deps.commitCouponRedemptionUseCase,
+      releaseCouponRedemptionUseCase: deps.releaseCouponRedemptionUseCase,
     }),
   );
   app.route(

@@ -65,8 +65,8 @@ functional library, boundaries and state are modeled with standard TypeScript.
   explicit UnitOfWork transactions.
 - Current tables are projections for reads and idempotency, while `outbox_events` is the integration
   publishing queue.
-- Order, payment, inventory, fulfillment, refund, and settlement keep append-only domain event streams as the
-  basis for state changes.
+- Order, payment, inventory, fulfillment, refund, settlement, and promotion keep append-only domain
+  event streams as the basis for state changes.
 
 ### Performance-Conscious Design
 
@@ -101,10 +101,10 @@ emit metrics, or start traces directly.
 
 ## Event Sourcing And Projections
 
-Flows tied to money, stock, settlement readiness, or delivery state use append-only
+Flows tied to money, stock, settlement readiness, coupon policy, or delivery state use append-only
 `domain_events` as the business ledger. Current tables such as `orders`, `payments`,
-`inventory_items`, `fulfillments`, `refunds`, and `settlements` are projections for API responses,
-idempotency lookups, and batch scans.
+`inventory_items`, `fulfillments`, `refunds`, `settlements`, `coupons`, and
+`coupon_redemptions` are projections for API responses, idempotency lookups, and batch scans.
 
 `outbox_events` is not the event store. `domain_events` records aggregate state and audit/accounting
 evidence; `outbox_events` handles integration publishing, retry, and delivery failure isolation.
@@ -125,6 +125,9 @@ spreading the change across unrelated flows.
 - Policy changes extend domain events and state transitions. For example, partial refunds,
   exchanges, and return inspection can be modeled in `refund`, while application usecases coordinate
   the workflow.
+- Discount policies stay in `promotion` as coupon policy and redemption lifecycle. Minimum order
+  amount, SKU eligibility, usage limits, and release after checkout failure do not leak into
+  order/payment internals.
 - Process changes add orchestration. Manual approval before refunds, automatic settlement after
   delivery, or compensation for inventory shortages can be connected through usecases, jobs, and
   outbox events without coupling modules directly.
@@ -160,6 +163,7 @@ src/modules/checkout/    order validation, inventory, payment, and compensation 
 src/modules/fulfillment/ fulfillment, label, and shipment status event stream with projection
 src/modules/refund/      refund request, approval, PG refund, restock, and completion event stream
 src/modules/settlement/  order-level settlement readiness from payment, refund, and delivery events
+src/modules/promotion/   coupon discount policy, quote, reservation, commit, and release event stream
 ```
 
 Each module follows the same layer shape:
@@ -247,6 +251,18 @@ curl -X POST http://localhost:3000/refunds \
 
 curl -X POST http://localhost:3000/refunds/refund-1/process
 
+curl -X POST http://localhost:3000/promotions/coupons \
+  -H 'content-type: application/json' \
+  -d '{"code":"save-3000","discount":{"type":"FIXED_AMOUNT","amount":{"amount":3000,"currency":"KRW"}},"minOrderAmount":{"amount":5000,"currency":"KRW"},"eligibleSkus":["sku-1"],"maxRedemptions":100,"startsAt":"2026-01-01T00:00:00.000Z","expiresAt":"2026-12-31T00:00:00.000Z"}'
+
+curl -X POST http://localhost:3000/promotions/coupons/quote \
+  -H 'content-type: application/json' \
+  -d '{"code":"save-3000","orderId":"order-1","orderAmount":{"amount":10000,"currency":"KRW"},"skus":["sku-1"]}'
+
+curl -X POST http://localhost:3000/promotions/coupons/reserve \
+  -H 'content-type: application/json' \
+  -d '{"code":"save-3000","orderId":"order-1","orderAmount":{"amount":10000,"currency":"KRW"},"skus":["sku-1"],"idempotencyKey":"coupon-reserve-1"}'
+
 curl -X POST http://localhost:3000/settlements/sync \
   -H 'content-type: application/json' \
   -d '{"orderId":"order-1"}'
@@ -324,6 +340,15 @@ pnpm db:migrate
 pnpm db:rollback
 ```
 
+Module folder scaffold:
+
+```bash
+pnpm scaffold:module promotion
+```
+
+This command creates only the standard layer folders and empty `index.ts` files. Domain models,
+usecases, repositories, and routes still need to be designed from the actual requirement.
+
 ## Testing Strategy
 
 Tests are risk-based and behavior-first. A function existing is not enough reason to test it.
@@ -339,6 +364,12 @@ Add new modules by following the existing layer shape. Do not directly share ano
 or `http` layer.
 
 Core logic communicates through usecases, ports, and domain events.
+
+Repetition helpers stay outside the core boundaries. `pnpm scaffold:module <name>` creates a
+starting folder shape only, route tests use `test/http/create-test-app.ts` to inject only the
+usecases under test, and outbox row insert conversion is shared through
+`src/infra/outbox/outbox-event.mapper.ts`. Domain event definitions and persistence timing remain in
+each module's domain/application/infra flow.
 
 Large batch workloads use `AsyncIterable`. Normal bounded HTTP reads use `Promise<T>` or
 `Promise<T[]>`.

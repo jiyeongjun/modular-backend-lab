@@ -20,7 +20,7 @@ Use when adding or changing an API endpoint.
 2. Build a plain command object.
 3. Call the usecase.
 4. Map `Result` to HTTP status and response body.
-5. Add `app.request` route tests.
+5. Add `app.request` route tests, using `test/http/create-test-app.ts` when testing the full app.
 6. Narrow untrusted input with Zod before creating commands.
 
 ## Files Usually Touched
@@ -41,6 +41,7 @@ Use when adding or changing an API endpoint.
 - Business rules in routes.
 - Direct DB or queue calls in route handlers.
 - Casting raw request input directly to application commands.
+- Duplicating unrelated usecase stubs when the route-test app factory can provide default failures.
 
 ## Definition Of Done
 
