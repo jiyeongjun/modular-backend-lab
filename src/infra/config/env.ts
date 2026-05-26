@@ -12,6 +12,8 @@ const EnvSchema = z.object({
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().default("http://localhost:4318"),
   OTEL_TRACES_EXPORTER: z.enum(["otlp", "none"]).default("otlp"),
   OTEL_METRICS_EXPORTER: z.enum(["otlp", "none"]).default("otlp"),
+  TOSS_PAYMENTS_SECRET_KEY: z.string().min(1).optional(),
+  TOSS_PAYMENTS_BASE_URL: z.string().url().default("https://api.tosspayments.com"),
 });
 
 export type AppConfig = Readonly<{
@@ -27,6 +29,10 @@ export type AppConfig = Readonly<{
     endpoint: string;
     tracesExporter: "otlp" | "none";
     metricsExporter: "otlp" | "none";
+  };
+  tossPayments: {
+    secretKey: string | null;
+    baseUrl: string;
   };
 }>;
 
@@ -46,6 +52,10 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
       endpoint: parsed.OTEL_EXPORTER_OTLP_ENDPOINT,
       tracesExporter: parsed.OTEL_TRACES_EXPORTER,
       metricsExporter: parsed.OTEL_METRICS_EXPORTER,
+    },
+    tossPayments: {
+      secretKey: parsed.TOSS_PAYMENTS_SECRET_KEY ?? null,
+      baseUrl: parsed.TOSS_PAYMENTS_BASE_URL,
     },
   };
 }

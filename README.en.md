@@ -69,6 +69,7 @@ quality gates.
 - Hono, `@hono/node-server`
 - PostgreSQL, Kysely, `pg`
 - Zod boundary validation
+- Toss Payments adapter behind a payment gateway port
 - Pino JSON logging
 - OpenTelemetry, Prometheus metrics, Grafana stack
 - BullMQ + Valkey locally
@@ -102,10 +103,17 @@ docs            architecture and maintenance policy
 ai/skills       operational playbooks for future AI agents
 ```
 
-The current business module is `order`.
+Current business modules:
 
 ```txt
-src/modules/order/
+src/modules/order/       payment transition and outbox reference
+src/modules/inventory/   stock reservation, release, commit, and expiration reference
+src/modules/payment/     Toss Payments confirm/cancel adapter and payment state reference
+```
+
+Each module follows the same layer shape:
+
+```txt
   domain/
   application/
   ports/
@@ -129,12 +137,22 @@ Example request:
 
 ```bash
 curl -X POST http://localhost:3000/orders/order-1/pay
+
+curl -X POST http://localhost:3000/payments/confirm \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"order-1","paymentKey":"test-payment-key","amount":10000,"currency":"KRW","idempotencyKey":"confirm-1"}'
 ```
 
 Run the outbox job:
 
 ```bash
 pnpm worker:outbox
+```
+
+Run the inventory reservation expiration job:
+
+```bash
+pnpm worker:inventory-expire
 ```
 
 ## Observability
@@ -154,6 +172,8 @@ The service exposes Prometheus metrics at `/metrics` and can export OTLP traces/
 ## Environment
 
 See `.env.example` for all variables. Only `src/infra/config/env.ts` may read environment variables.
+If `TOSS_PAYMENTS_SECRET_KEY` is not configured, the server still starts and the payment gateway
+returns an explicit `PAYMENT_GATEWAY_NOT_CONFIGURED` failure.
 
 ## Commands
 

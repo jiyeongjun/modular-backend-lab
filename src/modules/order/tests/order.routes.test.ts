@@ -26,6 +26,21 @@ function createTestApp(payOrderUseCase: PayOrderUseCase) {
     logger: pino({ enabled: false }),
     metrics: createMetricsRegistry(),
     payOrderUseCase,
+    reserveInventoryUseCase: async () => {
+      throw new Error("unexpected inventory route call");
+    },
+    releaseReservationUseCase: async () => {
+      throw new Error("unexpected inventory route call");
+    },
+    commitReservationUseCase: async () => {
+      throw new Error("unexpected inventory route call");
+    },
+    confirmPaymentUseCase: async () => {
+      throw new Error("unexpected payment route call");
+    },
+    cancelPaymentUseCase: async () => {
+      throw new Error("unexpected payment route call");
+    },
   });
 }
 

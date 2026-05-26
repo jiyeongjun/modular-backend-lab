@@ -10,4 +10,6 @@ Rules:
 - Do not hold a transaction open around external publishing, HTTP calls, or slow queue operations.
 - Use outbox rows for reliable external publication after state changes.
 
-The order module demonstrates `OrderUnitOfWork`.
+The order and payment modules demonstrate `UnitOfWork` boundaries. The payment module keeps Toss
+Payments HTTP calls outside DB transactions, then records the resulting state transition and outbox
+event in a short transaction.

@@ -4,9 +4,13 @@ import { type Migration, type MigrationResultSet, Migrator } from "kysely/migrat
 import { loadConfig } from "../config/env.js";
 import { closeDatabase, createDatabase, type Db } from "./db.js";
 import * as initialMigration from "./migrations/0001_initial.js";
+import * as inventoryMigration from "./migrations/0002_inventory.js";
+import * as paymentMigration from "./migrations/0003_payment.js";
 
 const migrations: Record<string, Migration> = {
   "0001_initial": initialMigration,
+  "0002_inventory": inventoryMigration,
+  "0003_payment": paymentMigration,
 };
 
 export function createMigrator(db: Db): Migrator {

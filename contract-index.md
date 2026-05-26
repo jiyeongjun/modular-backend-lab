@@ -52,9 +52,11 @@ Bootstrap `modular-backend-lab` into a production-grade TypeScript modular backe
 
 - `contracts/contract-001.md` - Bootstrap the complete modular backend reference repository. Status: done. Next step: hand off final results. Verification: `pnpm quality` and `pnpm install --frozen-lockfile` passed.
 - `contracts/contract-002.md` - Apply AI maintenance, governance, and type-safety prompt. Status: done. Next step: hand off final results. Verification: `pnpm quality` passed.
+- `contracts/contract-003.md` - Add inventory module with reservations, concurrency, HTTP routes, and expiration job. Status: done. Next step: hand off final results. Verification: `pnpm quality` passed.
+- `contracts/contract-004.md` - Add payment module with Toss Payments adapter. Status: done. Next step: hand off final results. Verification: `pnpm quality` passed.
 
 ## Current Status
 
 - Active subcontract: none
 - Status: done
-- Last updated: 2026-05-24T07:44:30.000Z
+- Last updated: 2026-05-26T04:20:00.000Z

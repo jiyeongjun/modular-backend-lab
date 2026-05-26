@@ -1,6 +1,6 @@
 # modular-backend-lab
 
-비즈니스 도메인이 점진적으로 늘어나는 백엔드를 가정한 모듈형 TypeScript reference architecture입니다.
+여러 비즈니스 도메인이 단계적으로 추가되는 백엔드를 전제로 한 모듈러 TypeScript 아키텍처 예제입니다.
 
 [English README](./README.en.md)
 
@@ -70,6 +70,7 @@ Infrastructure adapters
 - Hono, `@hono/node-server`
 - PostgreSQL, Kysely, `pg`
 - Zod boundary validation
+- Toss Payments adapter behind a payment gateway port
 - Pino JSON logging
 - OpenTelemetry, Prometheus metrics, Grafana stack
 - BullMQ + Valkey locally
@@ -105,10 +106,17 @@ docs            architecture and maintenance policy
 ai/skills       operational playbooks for future AI agents
 ```
 
-현재 비즈니스 모듈은 `order` 하나입니다.
+현재 비즈니스 모듈:
 
 ```txt
-src/modules/order/
+src/modules/order/       결제 상태 전이와 outbox reference
+src/modules/inventory/   재고 예약, 해제, 확정, 만료 reference
+src/modules/payment/     Toss Payments confirm/cancel adapter와 결제 상태 전이 reference
+```
+
+각 모듈은 같은 layer shape를 따릅니다.
+
+```txt
   domain/
   application/
   ports/
@@ -132,12 +140,22 @@ pnpm dev
 
 ```bash
 curl -X POST http://localhost:3000/orders/order-1/pay
+
+curl -X POST http://localhost:3000/payments/confirm \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"order-1","paymentKey":"test-payment-key","amount":10000,"currency":"KRW","idempotencyKey":"confirm-1"}'
 ```
 
 Outbox job 실행:
 
 ```bash
 pnpm worker:outbox
+```
+
+Inventory reservation expiration job 실행:
+
+```bash
+pnpm worker:inventory-expire
 ```
 
 ## 관측성
@@ -157,7 +175,8 @@ pnpm observability:up
 ## 환경 변수
 
 모든 변수는 `.env.example`을 참고하세요. 환경 변수 직접 접근은 `src/infra/config/env.ts`에서만
-허용됩니다.
+허용됩니다. `TOSS_PAYMENTS_SECRET_KEY`가 없으면 서버는 뜨지만 payment gateway는 명시적인
+`PAYMENT_GATEWAY_NOT_CONFIGURED` 실패를 반환합니다.
 
 ## 명령어
 

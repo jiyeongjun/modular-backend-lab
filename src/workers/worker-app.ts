@@ -3,7 +3,13 @@ import { createDatabase } from "../infra/db/db.js";
 import { createLogger } from "../infra/logger/logger.js";
 import { createBullMqConnection } from "../infra/queue/bullmq/bullmq-connection.js";
 import { createBullMqEventPublisher } from "../infra/queue/bullmq/bullmq-publisher.js";
+import { runInventoryReservationExpirerJob } from "../jobs/inventory-reservation-expirer/inventory-reservation-expirer.job.js";
 import { runOutboxPublisherJob } from "../jobs/outbox-publisher/outbox-publisher.job.js";
+import { createExpireReservationsUseCase } from "../modules/inventory/application/index.js";
+import {
+  createKyselyInventoryReservationReader,
+  createKyselyInventoryUnitOfWork,
+} from "../modules/inventory/infra/index.js";
 import { createKyselyOutboxRepository } from "../modules/order/infra/index.js";
 
 async function main(): Promise<void> {
@@ -13,6 +19,18 @@ async function main(): Promise<void> {
   const db = createDatabase(config);
 
   try {
+    if (jobName === "inventory-reservation-expirer") {
+      await runInventoryReservationExpirerJob({
+        expireReservationsUseCase: createExpireReservationsUseCase({
+          reader: createKyselyInventoryReservationReader(db),
+          uow: createKyselyInventoryUnitOfWork(db),
+          now: () => new Date(),
+        }),
+        logger,
+      });
+      return;
+    }
+
     if (jobName !== "outbox-publisher") {
       logger.error({ jobName }, "unknown worker job");
       process.exitCode = 1;

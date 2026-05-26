@@ -28,6 +28,7 @@
     "db:migrate": "tsx src/infra/db/migrator.ts up",
     "db:rollback": "tsx src/infra/db/migrator.ts down",
     "worker:outbox": "tsx src/workers/worker-app.ts outbox-publisher",
+    "worker:inventory-expire": "tsx src/workers/worker-app.ts inventory-reservation-expirer",
     "conventions:scan": "tsx scripts/convention-scan.ts",
     "arch:check": "dependency-cruiser src --config dependency-cruiser.config.cjs",
     "quality": "pnpm typecheck && pnpm check && pnpm test && pnpm arch:check && pnpm conventions:scan && pnpm build",

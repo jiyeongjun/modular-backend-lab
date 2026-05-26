@@ -1,8 +1,19 @@
 import { Hono } from "hono";
 import type { Logger } from "pino";
 import type { HttpMetrics } from "../infra/telemetry/metrics.js";
+import type {
+  CommitReservationUseCase,
+  ReleaseReservationUseCase,
+  ReserveInventoryUseCase,
+} from "../modules/inventory/application/index.js";
+import { createInventoryRoutes } from "../modules/inventory/http/index.js";
 import type { PayOrderUseCase } from "../modules/order/application/index.js";
 import { createOrderRoutes } from "../modules/order/http/index.js";
+import type {
+  CancelPaymentUseCase,
+  ConfirmPaymentUseCase,
+} from "../modules/payment/application/index.js";
+import { createPaymentRoutes } from "../modules/payment/http/index.js";
 import type { AppBindings } from "./context.js";
 import { createErrorHandler } from "./middleware/error-handler.js";
 import { requestLoggerMiddleware } from "./middleware/logger.js";
@@ -15,6 +26,11 @@ export function createApp(deps: {
   logger: Logger;
   metrics: HttpMetrics;
   payOrderUseCase: PayOrderUseCase;
+  reserveInventoryUseCase: ReserveInventoryUseCase;
+  releaseReservationUseCase: ReleaseReservationUseCase;
+  commitReservationUseCase: CommitReservationUseCase;
+  confirmPaymentUseCase: ConfirmPaymentUseCase;
+  cancelPaymentUseCase: CancelPaymentUseCase;
 }): Hono<AppBindings> {
   const app = new Hono<AppBindings>();
 
@@ -26,6 +42,21 @@ export function createApp(deps: {
   app.route("/", createHealthRoutes());
   app.route("/", createMetricsRoutes(deps.metrics));
   app.route("/", createOrderRoutes({ payOrderUseCase: deps.payOrderUseCase }));
+  app.route(
+    "/",
+    createInventoryRoutes({
+      reserveInventoryUseCase: deps.reserveInventoryUseCase,
+      releaseReservationUseCase: deps.releaseReservationUseCase,
+      commitReservationUseCase: deps.commitReservationUseCase,
+    }),
+  );
+  app.route(
+    "/",
+    createPaymentRoutes({
+      confirmPaymentUseCase: deps.confirmPaymentUseCase,
+      cancelPaymentUseCase: deps.cancelPaymentUseCase,
+    }),
+  );
 
   return app;
 }
