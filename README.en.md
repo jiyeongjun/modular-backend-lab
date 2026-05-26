@@ -194,7 +194,7 @@ while external calls such as payment or carrier API requests happen outside DB t
 
 ## Tech Stack And Rationale
 
-- Node.js 24 Active LTS: the target workload is IO-bound APIs and workers waiting on PostgreSQL, payment providers, carriers, queues, and observability exporters. Node's event-loop based nonblocking IO is a good fit for handling many concurrent waits without tying up one OS thread per request. CPU-bound work should move to queues/workers, and multicore usage is handled through horizontally scaled stateless processes. This is not a claim that Node is categorically better than Java; it fits this repository's small, explicit adapter model.
+- Node.js 24 Active LTS: the target workload is IO-bound APIs and workers waiting on PostgreSQL, payment providers, carriers, queues, and observability exporters. Node's event-loop based nonblocking IO is a good fit for handling many concurrent waits without tying up one OS thread per request. CPU-bound work should move to queues/workers, and multicore usage is handled through horizontally scaled stateless processes.
 - TypeScript ESM, strict mode: domain states, commands, events, and errors can be modeled with discriminated unions and exhaustive checks so boundary drift is caught early by the compiler.
 - pnpm, exact dependency saves: lockfiles and exact versions keep installs reproducible.
 - Hono, `@hono/node-server`: a small HTTP API surface keeps the framework as a thin delivery adapter.

@@ -193,7 +193,7 @@ update, outbox write는 짧은 UnitOfWork transaction 안에서 함께 처리하
 
 ## 기술 스택과 선택 이유
 
-- Node.js 24 Active LTS: 이 레포의 기본 workload는 PostgreSQL, 결제대행사, 배송사, queue, observability처럼 IO 대기가 많은 API와 worker입니다. Node의 event loop 기반 non-blocking IO는 요청마다 OS thread를 오래 점유하지 않고 많은 동시 대기를 처리하기에 적합합니다. CPU-bound 작업은 queue/worker로 분리하고, 멀티코어 활용과 배포 확장은 stateless process를 수평 확장하는 전제로 둡니다. Java보다 항상 낫다는 주장이 아니라, 이 레포의 작고 명시적인 adapter 구조와 잘 맞는 선택입니다.
+- Node.js 24 Active LTS: 이 레포의 기본 workload는 PostgreSQL, 결제대행사, 배송사, queue, observability처럼 IO 대기가 많은 API와 worker입니다. Node의 event loop 기반 non-blocking IO는 요청마다 OS thread를 오래 점유하지 않고 많은 동시 대기를 처리하기에 적합합니다. CPU-bound 작업은 queue/worker로 분리하고, 멀티코어 활용과 배포 확장은 stateless process를 수평 확장하는 전제로 둡니다.
 - TypeScript ESM, strict mode: domain state, command, event, error를 discriminated union과 exhaustive check로 모델링해 boundary drift를 컴파일 단계에서 먼저 발견하기 위한 선택입니다.
 - pnpm, exact dependency saves: lockfile과 exact version으로 재현 가능한 설치를 우선합니다.
 - Hono, `@hono/node-server`: HTTP framework를 얇은 delivery adapter로 유지하기 위해 작은 API surface를 가진 라우터를 사용합니다.
