@@ -53,11 +53,10 @@ checks) are treated as operating units.
 
 ### Functional Style In TypeScript
 
-This structure does not assume a specific functional programming framework. In the domain layer, it
-uses pure functions, immutable state transitions, discriminated unions, exhaustive checks, and
-`Result` returns as the default style. Large batch or status sync flows use `AsyncIterable` where the
-input can grow. It does not introduce an effect system such as `Effect` or `fp-ts`; boundaries and
-state are modeled with standard TypeScript.
+The domain layer favors pure functions, immutable state transitions, discriminated unions,
+exhaustive checks, and `Result` returns over inheritance-heavy object models. Large batch or status
+sync flows use `AsyncIterable` where the input can grow. Rather than introducing a separate effect
+system, boundaries and state are modeled with standard TypeScript.
 
 ### State Changes And Ledgers
 

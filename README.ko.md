@@ -52,10 +52,10 @@ delivery(HTTP/job/worker 진입점), external integration(PG, ERP, WMS 같은 �
 
 ### TypeScript 안의 함수형 스타일
 
-이 구조는 특정 함수형 framework를 전제로 하지 않습니다. 대신 Domain 계층에서 순수 함수, 불변 상태
-전이, discriminated union, exhaustive check, `Result` 반환을 기본 스타일로 둡니다. 큰 batch나 상태
-동기화처럼 처리 대상이 커질 수 있는 흐름은 필요할 때 `AsyncIterable`로 표현합니다. `Effect`,
-`fp-ts` 같은 별도 effect system을 도입하지 않고, 표준 TypeScript로 경계와 상태를 명시합니다.
+Domain 계층은 객체 상속 구조보다 순수 함수, 불변 상태 전이, discriminated union, exhaustive check,
+`Result` 반환을 기본 스타일로 둡니다. 큰 batch나 상태 동기화처럼 처리 대상이 커질 수 있는 흐름은
+필요할 때 `AsyncIterable`로 표현합니다. 별도 effect system을 도입하기보다 표준 TypeScript로 경계와
+상태를 명시합니다.
 
 ### 상태 변경과 원장
 
