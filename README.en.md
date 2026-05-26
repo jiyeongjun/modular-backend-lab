@@ -76,6 +76,18 @@ functional library, boundaries and state are modeled with standard TypeScript.
 - The outbox publisher avoids doing external publishing inside long DB transactions.
 - Prometheus/OpenTelemetry wiring makes latency, request count, and runtime signals observable.
 
+### Debuggability
+
+- Request validation, usecase orchestration, domain state transitions, and persistence adapters are
+  separated, which helps narrow a failure to HTTP input, business rules, storage, or external
+  integration.
+- Expected failures return `Result` values and discriminated unions, so route response mapping and
+  tests can check failure cases explicitly.
+- `domain_events`, projections, and `outbox_events` are separate, making it possible to inspect what
+  changed, what the current read state is, and how far integration publishing progressed.
+- Request ids, structured logging, metrics, and traces live at adapter/runtime boundaries, leaving
+  operational signals without putting instrumentation inside domain logic.
+
 ### Sustainability
 
 - Domain, application, ports, infra, HTTP, jobs, and workers are separated to keep change scope local

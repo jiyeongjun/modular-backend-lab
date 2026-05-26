@@ -76,6 +76,17 @@ Domain 계층은 객체 상속 구조보다 순수 함수, 불변 상태 전이,
 - Prometheus/OpenTelemetry 구성을 포함해 latency, request count, runtime signal을 관찰할 수 있게
   했습니다.
 
+### 디버깅 용이성
+
+- 요청 검증, usecase orchestration, domain state transition, persistence adapter가 분리되어 문제
+  위치를 HTTP 입력, 비즈니스 규칙, 저장소, 외부 연동 중 어디인지 좁히기 쉽습니다.
+- 예상 가능한 실패는 `Result`와 discriminated union으로 반환되어 route response mapping과 테스트에서
+  실패 종류를 명시적으로 확인할 수 있습니다.
+- `domain_events`, projection, `outbox_events`가 분리되어 어떤 상태 변경이 발생했는지, 현재 조회
+  상태가 무엇인지, 외부 발행이 어디까지 진행됐는지를 따로 추적할 수 있습니다.
+- request id, structured logging, metrics, traces는 adapter/runtime 경계에 있어 운영 신호를 남기면서
+  domain logic을 오염시키지 않습니다.
+
 ### 지속 가능성
 
 - Domain, application, ports, infra, HTTP, jobs, workers를 분리해 모듈이 늘어나도 변경 범위를 좁게
