@@ -73,6 +73,9 @@ function createTestApp(overrides: {
     cancelPaymentUseCase:
       overrides.cancelPaymentUseCase ??
       (async () => ok({ payment: createCancelledPayment(), idempotent: false })),
+    submitCheckoutUseCase: async () => {
+      throw new Error("unexpected checkout route call");
+    },
   });
 }
 

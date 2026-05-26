@@ -54,6 +54,9 @@ function createTestApp(overrides: {
     cancelPaymentUseCase: async () => {
       throw new Error("unexpected payment route call");
     },
+    submitCheckoutUseCase: async () => {
+      throw new Error("unexpected checkout route call");
+    },
   });
 }
 

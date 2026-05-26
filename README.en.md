@@ -109,6 +109,7 @@ Current business modules:
 src/modules/order/       payment transition and outbox reference
 src/modules/inventory/   stock reservation, release, commit, and expiration reference
 src/modules/payment/     Toss Payments confirm/cancel adapter and payment state reference
+src/modules/checkout/    order validation, inventory, payment, and compensation orchestration reference
 ```
 
 Each module follows the same layer shape:
@@ -141,6 +142,10 @@ curl -X POST http://localhost:3000/orders/order-1/pay
 curl -X POST http://localhost:3000/payments/confirm \
   -H 'content-type: application/json' \
   -d '{"orderId":"order-1","paymentKey":"test-payment-key","amount":10000,"currency":"KRW","idempotencyKey":"confirm-1"}'
+
+curl -X POST http://localhost:3000/checkout/submit \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"order-1","sku":"sku-1","quantity":2,"paymentKey":"test-payment-key","amount":10000,"currency":"KRW","idempotencyKey":"checkout-1"}'
 ```
 
 Run the outbox job:

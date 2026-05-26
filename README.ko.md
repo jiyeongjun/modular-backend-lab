@@ -112,6 +112,7 @@ ai/skills       operational playbooks for future AI agents
 src/modules/order/       결제 상태 전이와 outbox reference
 src/modules/inventory/   재고 예약, 해제, 확정, 만료 reference
 src/modules/payment/     Toss Payments confirm/cancel adapter와 결제 상태 전이 reference
+src/modules/checkout/    주문 검증, 재고 예약, 결제 승인, 보상 흐름 orchestration reference
 ```
 
 각 모듈은 같은 layer shape를 따릅니다.
@@ -144,6 +145,10 @@ curl -X POST http://localhost:3000/orders/order-1/pay
 curl -X POST http://localhost:3000/payments/confirm \
   -H 'content-type: application/json' \
   -d '{"orderId":"order-1","paymentKey":"test-payment-key","amount":10000,"currency":"KRW","idempotencyKey":"confirm-1"}'
+
+curl -X POST http://localhost:3000/checkout/submit \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"order-1","sku":"sku-1","quantity":2,"paymentKey":"test-payment-key","amount":10000,"currency":"KRW","idempotencyKey":"checkout-1"}'
 ```
 
 Outbox job 실행:

@@ -5,13 +5,22 @@ import { createDatabase } from "./infra/db/db.js";
 import { createLogger } from "./infra/logger/logger.js";
 import { createMetricsRegistry } from "./infra/telemetry/metrics.js";
 import { initializeTelemetry } from "./infra/telemetry/telemetry.js";
+import { createSubmitCheckoutUseCase } from "./modules/checkout/application/index.js";
+import {
+  createCheckoutInventoryAdapter,
+  createCheckoutOrderAdapter,
+  createCheckoutPaymentAdapter,
+} from "./modules/checkout/infra/index.js";
 import {
   createCommitReservationUseCase,
   createReleaseReservationUseCase,
   createReserveInventoryUseCase,
 } from "./modules/inventory/application/index.js";
 import { createKyselyInventoryUnitOfWork } from "./modules/inventory/infra/index.js";
-import { createPayOrderUseCase } from "./modules/order/application/index.js";
+import {
+  createPayOrderUseCase,
+  createValidateOrderForCheckoutUseCase,
+} from "./modules/order/application/index.js";
 import { createKyselyOrderUnitOfWork } from "./modules/order/infra/index.js";
 import {
   createCancelPaymentUseCase,
@@ -28,9 +37,13 @@ const config = loadConfig();
 const logger = createLogger(config);
 const telemetry = initializeTelemetry(config, logger);
 const db = createDatabase(config);
+const orderUow = createKyselyOrderUnitOfWork(db);
 const payOrderUseCase = createPayOrderUseCase({
-  uow: createKyselyOrderUnitOfWork(db),
+  uow: orderUow,
   now: () => new Date(),
+});
+const validateOrderForCheckoutUseCase = createValidateOrderForCheckoutUseCase({
+  uow: orderUow,
 });
 const inventoryUow = createKyselyInventoryUnitOfWork(db);
 const reserveInventoryUseCase = createReserveInventoryUseCase({
@@ -65,6 +78,23 @@ const cancelPaymentUseCase = createCancelPaymentUseCase({
   gateway: paymentGateway,
   now: () => new Date(),
 });
+const submitCheckoutUseCase = createSubmitCheckoutUseCase({
+  order: createCheckoutOrderAdapter({
+    validateOrderForCheckoutUseCase,
+    payOrderUseCase,
+  }),
+  inventory: createCheckoutInventoryAdapter({
+    reserveInventoryUseCase,
+    commitReservationUseCase,
+    releaseReservationUseCase,
+  }),
+  payment: createCheckoutPaymentAdapter({
+    confirmPaymentUseCase,
+    cancelPaymentUseCase,
+  }),
+  now: () => new Date(),
+  reservationTtlMs: 15 * 60 * 1000,
+});
 const app = createApp({
   logger,
   metrics: createMetricsRegistry(),
@@ -74,6 +104,7 @@ const app = createApp({
   commitReservationUseCase,
   confirmPaymentUseCase,
   cancelPaymentUseCase,
+  submitCheckoutUseCase,
 });
 
 const server = serve(

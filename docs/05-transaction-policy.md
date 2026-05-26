@@ -13,3 +13,8 @@ Rules:
 The order and payment modules demonstrate `UnitOfWork` boundaries. The payment module keeps Toss
 Payments HTTP calls outside DB transactions, then records the resulting state transition and outbox
 event in a short transaction.
+
+The checkout module demonstrates cross-module orchestration through application ports. It validates
+the order before side effects, calls inventory/payment/order usecases through adapters, and records
+compensation outcomes instead of stretching one database transaction across module and provider
+boundaries.

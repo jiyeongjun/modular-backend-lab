@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import type { Logger } from "pino";
 import type { HttpMetrics } from "../infra/telemetry/metrics.js";
+import type { SubmitCheckoutUseCase } from "../modules/checkout/application/index.js";
+import { createCheckoutRoutes } from "../modules/checkout/http/index.js";
 import type {
   CommitReservationUseCase,
   ReleaseReservationUseCase,
@@ -31,6 +33,7 @@ export function createApp(deps: {
   commitReservationUseCase: CommitReservationUseCase;
   confirmPaymentUseCase: ConfirmPaymentUseCase;
   cancelPaymentUseCase: CancelPaymentUseCase;
+  submitCheckoutUseCase: SubmitCheckoutUseCase;
 }): Hono<AppBindings> {
   const app = new Hono<AppBindings>();
 
@@ -57,6 +60,7 @@ export function createApp(deps: {
       cancelPaymentUseCase: deps.cancelPaymentUseCase,
     }),
   );
+  app.route("/", createCheckoutRoutes({ submitCheckoutUseCase: deps.submitCheckoutUseCase }));
 
   return app;
 }
