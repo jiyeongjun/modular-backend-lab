@@ -64,8 +64,8 @@ Domain 계층은 객체 상속 구조보다 순수 함수, 불변 상태 전이,
   UnitOfWork transaction 안에서 함께 처리합니다.
 - 현재 상태 테이블은 조회와 idempotency를 위한 projection이며, `outbox_events`는 외부 발행을 위한
   queue입니다.
-- `order`, `payment`, `inventory`, `fulfillment`, `refund`, `settlement`, `promotion`, `returns`
-  모듈은
+- `order`, `payment`, `inventory`, `fulfillment`, `refund`, `settlement`, `promotion`, `returns`,
+  `notification` 모듈은
   append-only domain event stream을 기준으로 상태 변경 근거를 남깁니다.
 
 ### 성능을 의식한 경계
@@ -145,6 +145,8 @@ ERP나 회계 기능은 이 레포 안에 직접 넣지 않습니다. `settlemen
   정산, 재고 부족 시 보상 흐름은 여러 모듈을 직접 엮지 않고 usecase, job, outbox를 통해 연결합니다.
 - 외부 시스템이 붙으면 port와 adapter를 추가합니다. PG, ERP, WMS, 배송사, 알림 시스템은 core에 직접
   들어오지 않고, 내부 event와 command를 외부 API에 맞게 변환하는 adapter로 둡니다.
+- 알림이 필요하면 `notification`의 요청, 발송, 실패, 재시도 상태를 사용합니다. 실제 이메일/SMS/Slack
+  provider는 sender port 뒤에 두고, 발송 결과만 projection과 event로 기록합니다.
 - 운영 화면이나 리포트가 필요하면 projection/read model을 추가합니다. 조회 요구 때문에 domain
   model을 바꾸지 않고, `domain_events`나 current table을 기준으로 필요한 읽기 모델을 구성합니다.
 - 새로운 도메인이 생기면 독립 모듈로 붙입니다. loyalty, coupon, settlement 같은 기능은 같은 layer
@@ -175,6 +177,7 @@ src/modules/refund/      환불 요청, 승인, PG 환불, 재입고, 완료 eve
 src/modules/settlement/  결제, 환불, 배송 이벤트에서 만든 주문별 정산 준비 상태 projection
 src/modules/promotion/   쿠폰 할인 정책, quote, 예약, 확정, 해제 event stream
 src/modules/returns/     반품 요청, RMA 발급, 입고, 검수 event stream
+src/modules/notification/ 알림 요청, 발송 성공/실패, 재시도 추적 event stream
 ```
 
 각 모듈은 같은 layer shape를 따릅니다.
@@ -274,6 +277,12 @@ curl -X POST http://localhost:3000/returns/return-1/receive
 curl -X POST http://localhost:3000/returns/return-1/inspect \
   -H 'content-type: application/json' \
   -d '{"accepted":true,"restockableItems":[{"sku":"sku-1","quantity":1}],"note":"restockable"}'
+
+curl -X POST http://localhost:3000/notifications \
+  -H 'content-type: application/json' \
+  -d '{"idempotencyKey":"notify-1","channel":"EMAIL","recipient":"customer@example.com","templateKey":"return.authorized","payload":{"orderId":"order-1","rmaNumber":"RMA-1"}}'
+
+curl -X POST http://localhost:3000/notifications/notification-1/send
 
 curl -X POST http://localhost:3000/promotions/coupons \
   -H 'content-type: application/json' \

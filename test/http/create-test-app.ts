@@ -21,6 +21,9 @@ export function createRouteTestApp(overrides: RouteTestAppOverrides = {}) {
     releaseReservationUseCase:
       overrides.releaseReservationUseCase ?? unexpectedUseCase("inventory"),
     commitReservationUseCase: overrides.commitReservationUseCase ?? unexpectedUseCase("inventory"),
+    createNotificationUseCase:
+      overrides.createNotificationUseCase ?? unexpectedUseCase("notification"),
+    sendNotificationUseCase: overrides.sendNotificationUseCase ?? unexpectedUseCase("notification"),
     confirmPaymentUseCase: overrides.confirmPaymentUseCase ?? unexpectedUseCase("payment"),
     cancelPaymentUseCase: overrides.cancelPaymentUseCase ?? unexpectedUseCase("payment"),
     submitCheckoutUseCase: overrides.submitCheckoutUseCase ?? unexpectedUseCase("checkout"),

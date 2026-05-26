@@ -17,6 +17,11 @@ import type {
   ReserveInventoryUseCase,
 } from "../modules/inventory/application/index.js";
 import { createInventoryRoutes } from "../modules/inventory/http/index.js";
+import type {
+  CreateNotificationUseCase,
+  SendNotificationUseCase,
+} from "../modules/notification/application/index.js";
+import { createNotificationRoutes } from "../modules/notification/http/index.js";
 import type { PayOrderUseCase } from "../modules/order/application/index.js";
 import { createOrderRoutes } from "../modules/order/http/index.js";
 import type {
@@ -65,6 +70,8 @@ export function createApp(deps: {
   reserveInventoryUseCase: ReserveInventoryUseCase;
   releaseReservationUseCase: ReleaseReservationUseCase;
   commitReservationUseCase: CommitReservationUseCase;
+  createNotificationUseCase: CreateNotificationUseCase;
+  sendNotificationUseCase: SendNotificationUseCase;
   confirmPaymentUseCase: ConfirmPaymentUseCase;
   cancelPaymentUseCase: CancelPaymentUseCase;
   submitCheckoutUseCase: SubmitCheckoutUseCase;
@@ -111,6 +118,13 @@ export function createApp(deps: {
     createPaymentRoutes({
       confirmPaymentUseCase: deps.confirmPaymentUseCase,
       cancelPaymentUseCase: deps.cancelPaymentUseCase,
+    }),
+  );
+  app.route(
+    "/",
+    createNotificationRoutes({
+      createNotificationUseCase: deps.createNotificationUseCase,
+      sendNotificationUseCase: deps.sendNotificationUseCase,
     }),
   );
   app.route("/", createCheckoutRoutes({ submitCheckoutUseCase: deps.submitCheckoutUseCase }));

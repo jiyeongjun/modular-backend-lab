@@ -31,6 +31,14 @@ import {
 } from "./modules/inventory/application/index.js";
 import { createKyselyInventoryUnitOfWork } from "./modules/inventory/infra/index.js";
 import {
+  createCreateNotificationUseCase,
+  createSendNotificationUseCase,
+} from "./modules/notification/application/index.js";
+import {
+  createKyselyNotificationUnitOfWork,
+  createLocalNotificationSender,
+} from "./modules/notification/infra/index.js";
+import {
   createPayOrderUseCase,
   createValidateOrderForCheckoutUseCase,
 } from "./modules/order/application/index.js";
@@ -104,6 +112,18 @@ const releaseReservationUseCase = createReleaseReservationUseCase({
 });
 const commitReservationUseCase = createCommitReservationUseCase({
   uow: inventoryUow,
+  now: () => new Date(),
+});
+const notificationUow = createKyselyNotificationUnitOfWork(db);
+const notificationSender = createLocalNotificationSender();
+const createNotificationUseCase = createCreateNotificationUseCase({
+  uow: notificationUow,
+  now: () => new Date(),
+  generateId: () => uuidGenerator.generate(),
+});
+const sendNotificationUseCase = createSendNotificationUseCase({
+  uow: notificationUow,
+  sender: notificationSender,
   now: () => new Date(),
 });
 const restockInventoryUseCase = createRestockInventoryUseCase({
@@ -251,6 +271,8 @@ const app = createApp({
   reserveInventoryUseCase,
   releaseReservationUseCase,
   commitReservationUseCase,
+  createNotificationUseCase,
+  sendNotificationUseCase,
   confirmPaymentUseCase,
   cancelPaymentUseCase,
   submitCheckoutUseCase,

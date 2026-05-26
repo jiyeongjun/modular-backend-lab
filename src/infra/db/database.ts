@@ -223,6 +223,26 @@ export type ReturnRequestsTable = {
   updated_at: TimestampColumn;
 };
 
+export type NotificationRequestsTable = {
+  id: string;
+  idempotency_key: string;
+  channel: string;
+  recipient: string;
+  template_key: string;
+  payload: unknown;
+  status: string;
+  provider_message_id: string | null;
+  last_failure_code: string | null;
+  last_failure_message: string | null;
+  attempt_count: number;
+  requested_at: TimestampColumn;
+  sent_at: TimestampColumn | null;
+  failed_at: TimestampColumn | null;
+  version: number;
+  created_at: TimestampColumn;
+  updated_at: TimestampColumn;
+};
+
 export type KyselyMigrationTable = {
   name: string;
   timestamp: TimestampColumn;
@@ -241,6 +261,7 @@ export type Database = {
   inventory_items: InventoryItemsTable;
   inventory_restocks: InventoryRestocksTable;
   inventory_reservations: InventoryReservationsTable;
+  notification_requests: NotificationRequestsTable;
   orders: OrdersTable;
   outbox_events: OutboxEventsTable;
   payments: PaymentsTable;
@@ -287,3 +308,6 @@ export type CouponRedemptionUpdate = Updateable<CouponRedemptionsTable>;
 export type ReturnRequestRow = Selectable<ReturnRequestsTable>;
 export type ReturnRequestInsert = Insertable<ReturnRequestsTable>;
 export type ReturnRequestUpdate = Updateable<ReturnRequestsTable>;
+export type NotificationRequestRow = Selectable<NotificationRequestsTable>;
+export type NotificationRequestInsert = Insertable<NotificationRequestsTable>;
+export type NotificationRequestUpdate = Updateable<NotificationRequestsTable>;

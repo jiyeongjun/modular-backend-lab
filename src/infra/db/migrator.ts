@@ -13,6 +13,7 @@ import * as domainEventsMigration from "./migrations/0007_domain_events.js";
 import * as settlementMigration from "./migrations/0008_settlement.js";
 import * as promotionMigration from "./migrations/0009_promotion.js";
 import * as returnsMigration from "./migrations/0010_returns.js";
+import * as notificationMigration from "./migrations/0011_notification.js";
 
 const migrations: Record<string, Migration> = {
   "0001_initial": initialMigration,
@@ -25,6 +26,7 @@ const migrations: Record<string, Migration> = {
   "0008_settlement": settlementMigration,
   "0009_promotion": promotionMigration,
   "0010_returns": returnsMigration,
+  "0011_notification": notificationMigration,
 };
 
 export function createMigrator(db: Db): Migrator {

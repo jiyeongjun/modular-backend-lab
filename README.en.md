@@ -65,8 +65,8 @@ functional library, boundaries and state are modeled with standard TypeScript.
   explicit UnitOfWork transactions.
 - Current tables are projections for reads and idempotency, while `outbox_events` is the integration
   publishing queue.
-- Order, payment, inventory, fulfillment, refund, settlement, promotion, and returns keep
-  append-only domain event streams as the basis for state changes.
+- Order, payment, inventory, fulfillment, refund, settlement, promotion, returns, and notification
+  keep append-only domain event streams as the basis for state changes.
 
 ### Performance-Conscious Design
 
@@ -146,6 +146,8 @@ spreading the change across unrelated flows.
 - External systems attach through ports and adapters. PGs, ERPs, WMSs, carriers, and notification
   systems stay outside the core, with adapters translating internal events and commands to their
   APIs.
+- Notifications use `notification` request, send, failure, and retry state. Real email/SMS/Slack
+  providers stay behind a sender port, while send results are recorded as projections and events.
 - Operations screens and reports use projections/read models. Query requirements should not bend the
   domain model; they can be built from `domain_events` or current tables.
 - New domains attach as independent modules. Loyalty, coupon, and settlement modules can follow the
@@ -177,6 +179,7 @@ src/modules/refund/      refund request, approval, PG refund, restock, and compl
 src/modules/settlement/  order-level settlement readiness from payment, refund, and delivery events
 src/modules/promotion/   coupon discount policy, quote, reservation, commit, and release event stream
 src/modules/returns/     return request, RMA authorization, receipt, and inspection event stream
+src/modules/notification/ notification request, send success/failure, and retry tracking event stream
 ```
 
 Each module follows the same layer shape:
@@ -275,6 +278,12 @@ curl -X POST http://localhost:3000/returns/return-1/receive
 curl -X POST http://localhost:3000/returns/return-1/inspect \
   -H 'content-type: application/json' \
   -d '{"accepted":true,"restockableItems":[{"sku":"sku-1","quantity":1}],"note":"restockable"}'
+
+curl -X POST http://localhost:3000/notifications \
+  -H 'content-type: application/json' \
+  -d '{"idempotencyKey":"notify-1","channel":"EMAIL","recipient":"customer@example.com","templateKey":"return.authorized","payload":{"orderId":"order-1","rmaNumber":"RMA-1"}}'
+
+curl -X POST http://localhost:3000/notifications/notification-1/send
 
 curl -X POST http://localhost:3000/promotions/coupons \
   -H 'content-type: application/json' \
