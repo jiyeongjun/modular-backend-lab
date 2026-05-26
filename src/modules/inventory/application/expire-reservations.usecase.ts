@@ -47,7 +47,7 @@ export function createExpireReservationsUseCase(deps: {
           return false;
         }
 
-        await items.save(expired.value.item);
+        await items.save(expired.value.item, expired.value.events);
         await reservations.save(expired.value.reservation);
         await outbox.saveAll(expired.value.events);
 

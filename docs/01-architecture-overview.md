@@ -4,6 +4,10 @@ This repository keeps business code independent from delivery and infrastructure
 Kysely handles persistence, workers trigger jobs, queue libraries publish messages, and telemetry
 observes the runtime. None of those concerns define domain behavior.
 
+Stateful business modules use append-only `domain_events` as the business ledger. Current tables are
+projections for reads, idempotency lookup, and batch scans. `outbox_events` remains a separate
+integration publishing queue and is not reused as the event store.
+
 The preferred dependency flow is:
 
 ```txt

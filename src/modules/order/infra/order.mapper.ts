@@ -1,6 +1,6 @@
-import type { OrderRow, OrderUpdate } from "../../../infra/db/database.js";
+import type { OrderInsert, OrderRow, OrderUpdate } from "../../../infra/db/database.js";
 import type { Currency } from "../../../shared/money/index.js";
-import type { Order, OrderBase, OrderStatus } from "../domain/index.js";
+import type { Order, OrderBase, OrderStatus, PendingOrder } from "../domain/index.js";
 
 function toOrderStatus(value: string): OrderStatus {
   if (value === "PENDING" || value === "PAID" || value === "CANCELLED") {
@@ -67,6 +67,19 @@ export function toOrderUpdate(order: Order): OrderUpdate {
     total_amount: order.totalAmount.amount,
     currency: order.totalAmount.currency,
     paid_at: order.paidAt,
+    updated_at: order.updatedAt,
+  };
+}
+
+export function toOrderInsert(order: PendingOrder): OrderInsert {
+  return {
+    id: order.id,
+    status: order.status,
+    total_amount: order.totalAmount.amount,
+    currency: order.totalAmount.currency,
+    paid_at: order.paidAt,
+    version: order.version,
+    created_at: order.createdAt,
     updated_at: order.updatedAt,
   };
 }

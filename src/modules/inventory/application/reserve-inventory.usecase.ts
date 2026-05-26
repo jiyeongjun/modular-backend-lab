@@ -59,7 +59,7 @@ export function createReserveInventoryUseCase(deps: {
         return reserved;
       }
 
-      await items.save(reserved.value.item);
+      await items.save(reserved.value.item, reserved.value.events);
       await reservations.create(reserved.value.reservation);
       await outbox.saveAll(reserved.value.events);
 

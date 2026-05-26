@@ -24,6 +24,12 @@ import type {
   ConfirmPaymentUseCase,
 } from "../modules/payment/application/index.js";
 import { createPaymentRoutes } from "../modules/payment/http/index.js";
+import type {
+  ProcessRefundUseCase,
+  RejectRefundUseCase,
+  RequestRefundUseCase,
+} from "../modules/refund/application/index.js";
+import { createRefundRoutes } from "../modules/refund/http/index.js";
 import type { AppBindings } from "./context.js";
 import { createErrorHandler } from "./middleware/error-handler.js";
 import { requestLoggerMiddleware } from "./middleware/logger.js";
@@ -47,6 +53,9 @@ export function createApp(deps: {
   purchaseShippingLabelUseCase: PurchaseShippingLabelUseCase;
   cancelFulfillmentUseCase: CancelFulfillmentUseCase;
   syncFulfillmentCarrierStatusUseCase: SyncFulfillmentCarrierStatusUseCase;
+  requestRefundUseCase: RequestRefundUseCase;
+  processRefundUseCase: ProcessRefundUseCase;
+  rejectRefundUseCase: RejectRefundUseCase;
 }): Hono<AppBindings> {
   const app = new Hono<AppBindings>();
 
@@ -82,6 +91,14 @@ export function createApp(deps: {
       purchaseShippingLabelUseCase: deps.purchaseShippingLabelUseCase,
       cancelFulfillmentUseCase: deps.cancelFulfillmentUseCase,
       syncFulfillmentCarrierStatusUseCase: deps.syncFulfillmentCarrierStatusUseCase,
+    }),
+  );
+  app.route(
+    "/",
+    createRefundRoutes({
+      requestRefundUseCase: deps.requestRefundUseCase,
+      processRefundUseCase: deps.processRefundUseCase,
+      rejectRefundUseCase: deps.rejectRefundUseCase,
     }),
   );
 

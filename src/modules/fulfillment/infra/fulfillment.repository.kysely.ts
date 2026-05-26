@@ -1,6 +1,8 @@
 import type { Kysely, Transaction } from "kysely";
 import type { Database } from "../../../infra/db/database.js";
+import { appendDomainEvents } from "../../../infra/db/domain-event-store.js";
 import { OptimisticConcurrencyError } from "../../../shared/errors/index.js";
+import type { Fulfillment, FulfillmentEvent, ReadyFulfillment } from "../domain/index.js";
 import type { FulfillmentReader, FulfillmentRepository } from "../ports/index.js";
 import { toFulfillment, toFulfillmentInsert, toFulfillmentUpdate } from "./fulfillment.mapper.js";
 
@@ -54,16 +56,17 @@ export function createKyselyFulfillmentRepository(db: DbExecutor): FulfillmentRe
       return row ? toFulfillment(row) : null;
     },
 
-    async create(fulfillment) {
+    async create(fulfillment: ReadyFulfillment, events: readonly FulfillmentEvent[]) {
+      await appendDomainEvents(db, events, -1);
       await db.insertInto("fulfillments").values(toFulfillmentInsert(fulfillment)).execute();
     },
 
-    async save(fulfillment) {
+    async save(fulfillment: Fulfillment, events: readonly FulfillmentEvent[]) {
       const result = await db
         .updateTable("fulfillments")
         .set({
           ...toFulfillmentUpdate(fulfillment),
-          version: fulfillment.version + 1,
+          version: fulfillment.version + events.length,
         })
         .where("id", "=", fulfillment.id)
         .where("version", "=", fulfillment.version)
@@ -72,6 +75,8 @@ export function createKyselyFulfillmentRepository(db: DbExecutor): FulfillmentRe
       if (Number(result.numUpdatedRows) === 0) {
         throw new OptimisticConcurrencyError(`Fulfillment ${fulfillment.id} has a stale version`);
       }
+
+      await appendDomainEvents(db, events, fulfillment.version);
     },
   };
 }

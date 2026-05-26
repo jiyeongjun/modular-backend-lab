@@ -48,7 +48,7 @@ export function createCommitReservationUseCase(deps: {
         return committed;
       }
 
-      await items.save(committed.value.item);
+      await items.save(committed.value.item, committed.value.events);
       await reservations.save(committed.value.reservation);
       await outbox.saveAll(committed.value.events);
 

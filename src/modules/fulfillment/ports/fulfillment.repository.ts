@@ -1,4 +1,9 @@
-import type { Fulfillment, ReadyFulfillment, TrackableFulfillment } from "../domain/index.js";
+import type {
+  Fulfillment,
+  FulfillmentEvent,
+  ReadyFulfillment,
+  TrackableFulfillment,
+} from "../domain/index.js";
 
 export type FulfillmentRepository = {
   findById(id: string): Promise<Fulfillment | null>;
@@ -6,8 +11,8 @@ export type FulfillmentRepository = {
   findByOrderId(orderId: string): Promise<Fulfillment | null>;
   findByIdempotencyKey(idempotencyKey: string): Promise<Fulfillment | null>;
   findByLabelIdempotencyKey(idempotencyKey: string): Promise<Fulfillment | null>;
-  create(fulfillment: ReadyFulfillment): Promise<void>;
-  save(fulfillment: Fulfillment): Promise<void>;
+  create(fulfillment: ReadyFulfillment, events: readonly FulfillmentEvent[]): Promise<void>;
+  save(fulfillment: Fulfillment, events: readonly FulfillmentEvent[]): Promise<void>;
 };
 
 export type FulfillmentReader = {

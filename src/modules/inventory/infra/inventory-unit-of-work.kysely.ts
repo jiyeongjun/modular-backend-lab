@@ -3,6 +3,7 @@ import type { InventoryUnitOfWork } from "../ports/index.js";
 import { createKyselyInventoryItemRepository } from "./inventory.repository.kysely.js";
 import { createKyselyInventoryOutboxRepository } from "./inventory-outbox.repository.kysely.js";
 import { createKyselyInventoryReservationRepository } from "./inventory-reservation.repository.kysely.js";
+import { createKyselyInventoryRestockRepository } from "./inventory-restock.repository.kysely.js";
 
 export function createKyselyInventoryUnitOfWork(db: Db): InventoryUnitOfWork {
   return {
@@ -10,6 +11,7 @@ export function createKyselyInventoryUnitOfWork(db: Db): InventoryUnitOfWork {
       return db.transaction().execute((trx) =>
         work({
           items: createKyselyInventoryItemRepository(trx),
+          restocks: createKyselyInventoryRestockRepository(trx),
           reservations: createKyselyInventoryReservationRepository(trx),
           outbox: createKyselyInventoryOutboxRepository(trx),
         }),

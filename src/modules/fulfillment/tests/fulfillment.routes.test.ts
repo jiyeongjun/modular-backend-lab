@@ -98,6 +98,15 @@ function createTestApp(overrides: {
     syncFulfillmentCarrierStatusUseCase:
       overrides.syncFulfillmentCarrierStatusUseCase ??
       (async () => ok({ fulfillment: createFulfillment(), updated: false })),
+    requestRefundUseCase: async () => {
+      throw new Error("unexpected refund route call");
+    },
+    processRefundUseCase: async () => {
+      throw new Error("unexpected refund route call");
+    },
+    rejectRefundUseCase: async () => {
+      throw new Error("unexpected refund route call");
+    },
   });
 }
 

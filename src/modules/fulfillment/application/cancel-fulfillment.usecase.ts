@@ -55,7 +55,7 @@ export function createCancelFulfillmentUseCase(deps: {
         return err(cancelled.error);
       }
 
-      await fulfillments.save(cancelled.value.fulfillment);
+      await fulfillments.save(cancelled.value.fulfillment, cancelled.value.events);
       await outbox.saveAll(cancelled.value.events);
 
       return ok({ fulfillment: cancelled.value.fulfillment, idempotent: false });

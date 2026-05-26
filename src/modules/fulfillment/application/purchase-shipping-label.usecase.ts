@@ -119,7 +119,7 @@ export function createPurchaseShippingLabelUseCase(deps: {
         return err(labeled.error);
       }
 
-      await fulfillments.save(labeled.value.fulfillment);
+      await fulfillments.save(labeled.value.fulfillment, labeled.value.events);
       await outbox.saveAll(labeled.value.events);
 
       return ok({ fulfillment: labeled.value.fulfillment, idempotent: false });

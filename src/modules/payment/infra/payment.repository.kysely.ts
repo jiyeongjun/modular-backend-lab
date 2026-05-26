@@ -1,6 +1,8 @@
 import type { Kysely, Transaction } from "kysely";
 import type { Database } from "../../../infra/db/database.js";
+import { appendDomainEvents } from "../../../infra/db/domain-event-store.js";
 import { OptimisticConcurrencyError } from "../../../shared/errors/index.js";
+import type { Payment, PaymentEvent, PendingPayment } from "../domain/index.js";
 import type { PaymentRepository } from "../ports/index.js";
 import { toPayment, toPaymentInsert, toPaymentUpdate } from "./payment.mapper.js";
 
@@ -54,16 +56,17 @@ export function createKyselyPaymentRepository(db: DbExecutor): PaymentRepository
       return row ? toPayment(row) : null;
     },
 
-    async create(payment) {
+    async create(payment: PendingPayment, events: readonly PaymentEvent[]) {
+      await appendDomainEvents(db, events, -1);
       await db.insertInto("payments").values(toPaymentInsert(payment)).execute();
     },
 
-    async save(payment) {
+    async save(payment: Payment, events: readonly PaymentEvent[]) {
       const result = await db
         .updateTable("payments")
         .set({
           ...toPaymentUpdate(payment),
-          version: payment.version + 1,
+          version: payment.version + events.length,
         })
         .where("id", "=", payment.id)
         .where("version", "=", payment.version)
@@ -72,6 +75,8 @@ export function createKyselyPaymentRepository(db: DbExecutor): PaymentRepository
       if (Number(result.numUpdatedRows) === 0) {
         throw new OptimisticConcurrencyError(`Payment ${payment.id} has a stale version`);
       }
+
+      await appendDomainEvents(db, events, payment.version);
     },
   };
 }

@@ -5,12 +5,15 @@ import type {
   InventoryReservationInsert,
   InventoryReservationRow,
   InventoryReservationUpdate,
+  InventoryRestockInsert,
+  InventoryRestockRow,
 } from "../../../infra/db/database.js";
 import type {
   ActiveInventoryReservation,
   InventoryItem,
   InventoryReservation,
   InventoryReservationStatus,
+  InventoryRestock,
 } from "../domain/index.js";
 
 function toReservationStatus(value: string): InventoryReservationStatus {
@@ -149,5 +152,29 @@ export function toInventoryReservationUpdate(
     committed_at: reservation.committedAt,
     expired_at: reservation.expiredAt,
     updated_at: reservation.updatedAt,
+  };
+}
+
+export function toInventoryRestock(row: InventoryRestockRow): InventoryRestock {
+  if (row.quantity <= 0) {
+    throw new Error(`Inventory restock ${row.id} has invalid quantity`);
+  }
+
+  return {
+    id: row.id,
+    sku: row.sku,
+    idempotencyKey: row.idempotency_key,
+    quantity: row.quantity,
+    createdAt: row.created_at,
+  };
+}
+
+export function toInventoryRestockInsert(restock: InventoryRestock): InventoryRestockInsert {
+  return {
+    id: restock.id,
+    sku: restock.sku,
+    idempotency_key: restock.idempotencyKey,
+    quantity: restock.quantity,
+    created_at: restock.createdAt,
   };
 }

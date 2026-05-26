@@ -109,7 +109,9 @@ export function fulfillmentCreatedEvent(fulfillment: ReadyFulfillment): Fulfillm
     payload: {
       fulfillmentId: fulfillment.id,
       orderId: fulfillment.orderId,
+      idempotencyKey: fulfillment.idempotencyKey,
       recipient: fulfillment.recipient,
+      package: fulfillment.package,
     },
   };
 }
@@ -144,6 +146,7 @@ export function markFulfillmentPacked(
         payload: {
           fulfillmentId: packed.id,
           orderId: packed.orderId,
+          packedAt: packed.packedAt,
         },
       },
     ],
@@ -203,9 +206,12 @@ export function purchaseShippingLabel(
         payload: {
           fulfillmentId: labeled.id,
           orderId: labeled.orderId,
+          labelIdempotencyKey: labeled.labelIdempotencyKey,
           carrier: labeled.carrier,
           carrierShipmentId: labeled.carrierShipmentId,
           trackingNumber: labeled.trackingNumber,
+          carrierStatus: labeled.carrierStatus,
+          labelPurchasedAt: labeled.labelPurchasedAt,
         },
       },
     ],
@@ -244,6 +250,7 @@ export function cancelFulfillment(
           fulfillmentId: cancelled.id,
           orderId: cancelled.orderId,
           reason: input.reason,
+          cancelledAt: cancelled.cancelledAt,
         },
       },
     ],
@@ -363,6 +370,7 @@ function fulfillmentShippedEvent(fulfillment: ShippedFulfillment, now: Date): Fu
       orderId: fulfillment.orderId,
       carrierStatus: fulfillment.carrierStatus,
       trackingNumber: fulfillment.trackingNumber,
+      shippedAt: fulfillment.shippedAt,
     },
   };
 }
@@ -378,6 +386,8 @@ function fulfillmentDeliveredEvent(fulfillment: DeliveredFulfillment, now: Date)
       orderId: fulfillment.orderId,
       carrierStatus: fulfillment.carrierStatus,
       trackingNumber: fulfillment.trackingNumber,
+      shippedAt: fulfillment.shippedAt,
+      deliveredAt: fulfillment.deliveredAt,
     },
   };
 }

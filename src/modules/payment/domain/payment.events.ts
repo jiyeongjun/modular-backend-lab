@@ -1,4 +1,20 @@
 import type { Money } from "../../../shared/money/index.js";
+import type { PaymentProvider } from "./payment.js";
+
+export type PaymentStarted = Readonly<{
+  type: "PaymentStarted";
+  aggregateType: "Payment";
+  aggregateId: string;
+  occurredAt: Date;
+  payload: {
+    paymentId: string;
+    orderId: string;
+    provider: PaymentProvider;
+    amount: Money;
+    providerPaymentKey: string;
+    confirmIdempotencyKey: string;
+  };
+}>;
 
 export type PaymentAuthorized = Readonly<{
   type: "PaymentAuthorized";
@@ -10,6 +26,10 @@ export type PaymentAuthorized = Readonly<{
     orderId: string;
     amount: Money;
     providerPaymentKey: string;
+    providerStatus: string;
+    method: string | null;
+    receiptUrl: string | null;
+    authorizedAt: Date;
   };
 }>;
 
@@ -23,7 +43,10 @@ export type PaymentAuthorizationFailed = Readonly<{
     orderId: string;
     amount: Money;
     providerPaymentKey: string;
+    providerStatus: string | null;
     failureCode: string;
+    failureMessage: string;
+    failedAt: Date;
   };
 }>;
 
@@ -37,8 +60,15 @@ export type PaymentCancelled = Readonly<{
     orderId: string;
     amount: Money;
     providerPaymentKey: string;
+    cancelIdempotencyKey: string;
+    providerStatus: string;
     reason: string;
+    cancelledAt: Date;
   };
 }>;
 
-export type PaymentEvent = PaymentAuthorized | PaymentAuthorizationFailed | PaymentCancelled;
+export type PaymentEvent =
+  | PaymentStarted
+  | PaymentAuthorized
+  | PaymentAuthorizationFailed
+  | PaymentCancelled;

@@ -1,12 +1,12 @@
 # modular-backend-lab
 
-여러 비즈니스 도메인이 단계적으로 추가되는 백엔드를 전제로 한 모듈러 TypeScript 아키텍처 예제입니다.
+복잡한 요구사항이 여러 비즈니스 도메인에 흩어진 백엔드 시스템에서 관심사를 분리하고, 변경, 확장, 재사용이 쉬운 모듈을 구성하는 TypeScript 아키텍처 예제입니다.
 
 [English README](./README.en.md)
 
 ## 아키텍처 요약
 
-핵심 규칙은 단순합니다. 어댑터는 바깥 경계에 두고, 비즈니스 동작은 portable core에 둡니다.
+이 구조의 기준은 명확합니다. HTTP, DB, queue, scheduler, telemetry는 바깥 adapter로 두고, 비즈니스 상태와 규칙은 domain/application core에 둡니다.
 
 ```txt
 HTTP / Workers / Scheduler
@@ -26,13 +26,16 @@ Infrastructure adapters
 - OpenTelemetry = telemetry instrumentation boundary
 - Grafana stack = local observability runtime
 - Domain/Application = portable core
+- Domain events = append-only business ledger
+- Current state tables = read model projections
+- Outbox events = integration publishing queue
 - TypeScript compiler = first-line architecture guard
 
 ## 설계 철학
 
-이 레포는 명시적인 경계를 중심으로 구성되어 있습니다. Domain/application core는 portable하게
-두고, infrastructure는 adapter로 분리하며, transaction, boundary validation, quality gate를
-명확하게 드러내는 구조를 기준으로 합니다.
+이 레포는 요구사항이 늘어날수록 서로 다른 관심사가 섞이기 쉬운 백엔드에서, domain/application
+core와 adapter를 분리해 변경 범위를 작게 유지하는 구조를 기준으로 합니다. transaction, boundary
+validation, quality gate는 모듈이 늘어나도 반복 가능한 검증 경로로 명시합니다.
 
 ### 안전성
 
@@ -40,7 +43,8 @@ Infrastructure adapters
   먼저 받습니다.
 - Zod는 HTTP/env/external payload 같은 boundary validation에만 사용합니다.
 - 예상 가능한 비즈니스 실패는 exception이 아니라 `Result`로 반환합니다.
-- 상태 변경과 outbox write는 explicit UnitOfWork transaction 안에서 처리합니다.
+- 상태 변경은 `domain_events` append, current projection update, outbox write를 explicit
+  UnitOfWork transaction 안에서 함께 처리합니다.
 - dependency-cruiser와 `scripts/convention-scan.ts`가 framework/infra leakage, unsafe casts,
   strictness 약화를 검사합니다.
 
@@ -57,6 +61,10 @@ Infrastructure adapters
 
 - Domain, application, ports, infra, HTTP, jobs, workers를 분리해 모듈이 늘어나도 변경 범위를 좁게
   유지합니다.
+- 모듈은 domain/application/ports를 중심으로 구성되어 HTTP, DB, queue adapter가 달라져도 core 재사용
+  가능성을 유지합니다.
+- order, payment, inventory, fulfillment, refund는 append-only domain event stream을 기준으로
+  상태 변경 근거를 남기고, 현재 테이블은 조회와 idempotency를 위한 projection으로 사용합니다.
 - `AGENTS.md`, `docs/`, `ai/skills/`가 future AI/human maintenance rule을 문서화합니다.
 - Biome, dependency-cruiser, convention scanner, CI quality gate가 반복 가능한 검증 경로를 제공합니다.
 - dependency는 exact version과 lockfile로 고정하고, Node Active LTS 정책을 문서화했습니다.
@@ -93,6 +101,46 @@ Queue backend는 포트 뒤에 격리됩니다. Core processor는 BullMQ, SQS, R
 OpenTelemetry와 Grafana stack은 runtime instrumentation 경계입니다. 순수 domain logic은 logging,
 metrics, traces를 직접 수행하지 않습니다.
 
+## Event Sourcing과 projection
+
+주문, 결제, 재고, 배송, 환불처럼 돈, 재고, 정산 근거와 연결되는 모듈은 append-only
+`domain_events`를 상태 변경의 원장으로 둡니다. `orders`, `payments`, `inventory_items`,
+`fulfillments`, `refunds` 같은 current table은 API 응답, idempotency lookup, batch scan을 위한
+projection입니다.
+
+`outbox_events`는 event store가 아닙니다. `domain_events`는 aggregate 상태와 감사/회계 근거를 위한
+원장이고, `outbox_events`는 외부 시스템 발행 실패와 재시도를 다루는 integration queue입니다. 상태
+전이 usecase는 짧은 transaction 안에서 domain event append, projection update, outbox write를 함께
+처리합니다.
+
+이 구조는 ERP나 회계 시스템을 직접 구현하지 않습니다. 대신 payment/refund/inventory/fulfillment의
+불변 이벤트를 downstream accounting event나 ERP adapter로 변환할 수 있는 근거를 남깁니다.
+
+## 변경 요구사항에 대응하는 방식
+
+이 레포가 기대하는 유연성은 "새 요구사항을 아무 수정 없이 처리한다"는 뜻이 아닙니다. 요구사항이
+들어왔을 때 바뀌어야 하는 위치가 domain, application orchestration, port, adapter, projection 중
+어디인지 드러나고, 그 변경 범위를 좁게 유지하는 쪽에 초점을 둡니다.
+
+예시는 다음과 같습니다.
+
+- 부분 환불, 교환, 반품 검수 같은 정책이 추가되면 `refund/domain`에 상태와 event를 추가하고,
+  `process-refund` usecase가 새 전이를 orchestration합니다. PG나 재고 시스템 호출은 기존 port 뒤에
+  남깁니다.
+- ERP 전표 연동이 필요해지면 ERP SDK를 domain/application에 넣지 않습니다. `domain_events` 또는
+  outbox로 발행된 `PaymentAuthorized`, `RefundPaymentRefunded`, `InventoryReservationCommitted`,
+  `InventoryRestocked`, `FulfillmentDelivered` 같은 event를 accounting adapter/job에서 변환합니다.
+- 새 PG를 붙이면 payment core를 교체하지 않고 `PaymentGateway` port의 새 adapter를 추가합니다.
+  provider별 응답 차이는 adapter에서 정규화하고, 결제 상태 전이는 기존 domain event stream에 남깁니다.
+- 창고별 재고, lot, serial 추적이 필요해지면 `inventory`의 aggregate key와 event payload,
+  projection을 확장합니다. checkout은 inventory application port를 계속 호출하므로 HTTP나 payment
+  흐름과 직접 얽히지 않습니다.
+- 특정 화면이나 운영 리포트가 필요하면 domain model을 조회용 요구에 맞춰 비틀지 않고, current table
+  projection이나 `domain_events` 기반 별도 read model을 추가합니다.
+- 신규 loyalty, coupon, settlement 같은 모듈은 `src/modules/{module}` 아래 같은 layer shape로 붙이고,
+  다른 모듈의 `infra/http`를 직접 import하지 않습니다. 필요한 연결은 domain event, application port,
+  outbox/job으로 표현합니다.
+
 ## 폴더 구조
 
 ```txt
@@ -109,11 +157,12 @@ ai/skills       operational playbooks for future AI agents
 현재 비즈니스 모듈:
 
 ```txt
-src/modules/order/       결제 상태 전이와 outbox reference
-src/modules/inventory/   재고 예약, 해제, 확정, 만료 reference
-src/modules/payment/     Toss Payments confirm/cancel adapter와 결제 상태 전이 reference
+src/modules/order/       주문 lifecycle event stream과 결제 상태 projection
+src/modules/inventory/   SKU별 재고 이동 ledger, 예약, 해제, 확정, 만료 projection
+src/modules/payment/     Toss Payments adapter 뒤의 결제 lifecycle event stream
 src/modules/checkout/    주문 검증, 재고 예약, 결제 승인, 보상 흐름 orchestration reference
-src/modules/fulfillment/ 결제 이후 출고, 운송장, 배송 상태 동기화 reference
+src/modules/fulfillment/ 출고, 운송장, 배송 상태 event stream과 projection
+src/modules/refund/      환불 요청, 승인, PG 환불, 재입고, 완료 event stream
 ```
 
 각 모듈은 같은 layer shape를 따릅니다.
@@ -150,9 +199,9 @@ discriminated union, exhaustive check, `Result` 반환을 선호합니다. 큰 b
 명시하는 쪽을 선택합니다.
 
 트랜잭션 경계는 application usecase에서 명시적으로 잡습니다. Domain은 transaction을 알지 못하고,
-Kysely transaction도 application 밖으로 새지 않습니다. 상태 변경과 outbox write는 짧은
-UnitOfWork transaction 안에서 함께 처리하며, 결제/배송사 API 같은 외부 호출은 DB transaction
-밖에서 수행합니다.
+Kysely transaction도 application 밖으로 새지 않습니다. domain event append, current projection
+update, outbox write는 짧은 UnitOfWork transaction 안에서 함께 처리하며, 결제/배송사 API 같은 외부
+호출은 DB transaction 밖에서 수행합니다.
 
 ## 로컬 실행
 
@@ -187,6 +236,12 @@ curl -X POST http://localhost:3000/fulfillments/fulfillment-1/pack
 curl -X POST http://localhost:3000/fulfillments/fulfillment-1/label \
   -H 'content-type: application/json' \
   -d '{"idempotencyKey":"label-1"}'
+
+curl -X POST http://localhost:3000/refunds \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"order-1","paymentId":"payment-1","amount":10000,"currency":"KRW","reason":"customer request","returnRequired":true,"restock":{"sku":"sku-1","quantity":2},"idempotencyKey":"refund-1"}'
+
+curl -X POST http://localhost:3000/refunds/refund-1/process
 ```
 
 Outbox job 실행:

@@ -31,3 +31,5 @@ export type ExpireReservationError =
       message: string;
     }
   | { type: "InventoryInvariantViolation"; message: string };
+
+export type RestockInventoryError = { type: "InvalidRestockQuantity"; message: string };

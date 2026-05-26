@@ -48,7 +48,7 @@ export function createReleaseReservationUseCase(deps: {
         return released;
       }
 
-      await items.save(released.value.item);
+      await items.save(released.value.item, released.value.events);
       await reservations.save(released.value.reservation);
       await outbox.saveAll(released.value.events);
 

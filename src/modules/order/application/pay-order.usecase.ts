@@ -30,7 +30,7 @@ export function createPayOrderUseCase(deps: {
         return paid;
       }
 
-      await orders.save(paid.value.order);
+      await orders.save(paid.value.order, paid.value.events);
       await outbox.saveAll(paid.value.events);
 
       return ok(paid.value.order);

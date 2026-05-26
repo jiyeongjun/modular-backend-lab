@@ -45,6 +45,15 @@ function createTestApp(submitCheckoutUseCase: SubmitCheckoutUseCase) {
     syncFulfillmentCarrierStatusUseCase: async () => {
       throw new Error("unexpected fulfillment route call");
     },
+    requestRefundUseCase: async () => {
+      throw new Error("unexpected refund route call");
+    },
+    processRefundUseCase: async () => {
+      throw new Error("unexpected refund route call");
+    },
+    rejectRefundUseCase: async () => {
+      throw new Error("unexpected refund route call");
+    },
   });
 }
 

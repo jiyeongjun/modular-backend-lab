@@ -14,6 +14,7 @@ import {
 import {
   createCancelFulfillmentUseCase,
   createCreateFulfillmentUseCase,
+  createGetFulfillmentForRefundUseCase,
   createMarkFulfillmentPackedUseCase,
   createPurchaseShippingLabelUseCase,
   createSyncFulfillmentCarrierStatusUseCase,
@@ -26,6 +27,7 @@ import {
   createCommitReservationUseCase,
   createReleaseReservationUseCase,
   createReserveInventoryUseCase,
+  createRestockInventoryUseCase,
 } from "./modules/inventory/application/index.js";
 import { createKyselyInventoryUnitOfWork } from "./modules/inventory/infra/index.js";
 import {
@@ -42,6 +44,17 @@ import {
   createTossPaymentsGateway,
   createUnavailablePaymentGateway,
 } from "./modules/payment/infra/index.js";
+import {
+  createProcessRefundUseCase,
+  createRejectRefundUseCase,
+  createRequestRefundUseCase,
+} from "./modules/refund/application/index.js";
+import {
+  createKyselyRefundUnitOfWork,
+  createRefundFulfillmentAdapter,
+  createRefundInventoryAdapter,
+  createRefundPaymentAdapter,
+} from "./modules/refund/infra/index.js";
 import { uuidGenerator } from "./shared/id/index.js";
 
 const config = loadConfig();
@@ -69,6 +82,11 @@ const releaseReservationUseCase = createReleaseReservationUseCase({
 const commitReservationUseCase = createCommitReservationUseCase({
   uow: inventoryUow,
   now: () => new Date(),
+});
+const restockInventoryUseCase = createRestockInventoryUseCase({
+  uow: inventoryUow,
+  now: () => new Date(),
+  generateId: () => uuidGenerator.generate(),
 });
 const paymentGateway =
   config.tossPayments.secretKey === null
@@ -131,6 +149,26 @@ const syncFulfillmentCarrierStatusUseCase = createSyncFulfillmentCarrierStatusUs
   carrier: shippingCarrier,
   now: () => new Date(),
 });
+const getFulfillmentForRefundUseCase = createGetFulfillmentForRefundUseCase({
+  uow: fulfillmentUow,
+});
+const refundUow = createKyselyRefundUnitOfWork(db);
+const requestRefundUseCase = createRequestRefundUseCase({
+  uow: refundUow,
+  fulfillment: createRefundFulfillmentAdapter({ getFulfillmentForRefundUseCase }),
+  now: () => new Date(),
+  generateId: () => uuidGenerator.generate(),
+});
+const processRefundUseCase = createProcessRefundUseCase({
+  uow: refundUow,
+  payment: createRefundPaymentAdapter({ cancelPaymentUseCase }),
+  inventory: createRefundInventoryAdapter({ restockInventoryUseCase }),
+  now: () => new Date(),
+});
+const rejectRefundUseCase = createRejectRefundUseCase({
+  uow: refundUow,
+  now: () => new Date(),
+});
 const app = createApp({
   logger,
   metrics: createMetricsRegistry(),
@@ -146,6 +184,9 @@ const app = createApp({
   purchaseShippingLabelUseCase,
   cancelFulfillmentUseCase,
   syncFulfillmentCarrierStatusUseCase,
+  requestRefundUseCase,
+  processRefundUseCase,
+  rejectRefundUseCase,
 });
 
 const server = serve(

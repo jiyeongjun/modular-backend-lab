@@ -102,7 +102,7 @@ export function createSyncFulfillmentCarrierStatusUseCase(deps: {
         return ok({ fulfillment: applied.value.fulfillment, updated: false });
       }
 
-      await fulfillments.save(applied.value.fulfillment);
+      await fulfillments.save(applied.value.fulfillment, applied.value.events);
       await outbox.saveAll(applied.value.events);
 
       return ok({ fulfillment: applied.value.fulfillment, updated: true });

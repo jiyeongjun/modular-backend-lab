@@ -8,11 +8,13 @@ Rules:
 - Repositories receive a transaction-bound executor from the unit of work.
 - Do not pass Kysely objects into domain or application code.
 - Do not hold a transaction open around external publishing, HTTP calls, or slow queue operations.
-- Use outbox rows for reliable external publication after state changes.
+- Append domain events, update projections, and write outbox rows in the same short transaction.
+- Use outbox rows for reliable external publication after state changes; do not use outbox rows as
+  the event store.
 
-The order and payment modules demonstrate `UnitOfWork` boundaries. The payment module keeps Toss
-Payments HTTP calls outside DB transactions, then records the resulting state transition and outbox
-event in a short transaction.
+The order, payment, inventory, fulfillment, and refund modules demonstrate `UnitOfWork` boundaries.
+The payment module keeps Toss Payments HTTP calls outside DB transactions, then records the resulting
+domain event, projection update, and outbox event in a short transaction.
 
 The checkout module demonstrates cross-module orchestration through application ports. It validates
 the order before side effects, calls inventory/payment/order usecases through adapters, and records

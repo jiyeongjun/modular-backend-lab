@@ -4,6 +4,7 @@ import type {
   ExpireReservationError,
   ReleaseReservationError,
   ReserveInventoryError,
+  RestockInventoryError,
 } from "./inventory.errors.js";
 import type { InventoryEvent } from "./inventory.events.js";
 import { getAvailableQuantity, type InventoryItem } from "./inventory-item.js";
@@ -14,6 +15,20 @@ import type {
   InventoryReservation,
   ReleasedInventoryReservation,
 } from "./inventory-reservation.js";
+
+export function inventoryStockOpenedEvent(item: InventoryItem): InventoryEvent {
+  return {
+    type: "InventoryStockOpened",
+    aggregateType: "InventoryItem",
+    aggregateId: item.sku,
+    occurredAt: item.createdAt,
+    payload: {
+      sku: item.sku,
+      onHand: item.onHand,
+      reserved: item.reserved,
+    },
+  };
+}
 
 export function reserveInventory(
   item: InventoryItem,
@@ -83,12 +98,13 @@ export function reserveInventory(
     events: [
       {
         type: "InventoryReserved",
-        aggregateType: "InventoryReservation",
-        aggregateId: reservation.id,
+        aggregateType: "InventoryItem",
+        aggregateId: item.sku,
         occurredAt: input.now,
         payload: {
           reservationId: reservation.id,
           sku: reservation.sku,
+          idempotencyKey: reservation.idempotencyKey,
           quantity: reservation.quantity,
           expiresAt: reservation.expiresAt,
         },
@@ -143,8 +159,8 @@ export function releaseReservation(
         events: [
           {
             type: "InventoryReservationReleased",
-            aggregateType: "InventoryReservation",
-            aggregateId: reservation.id,
+            aggregateType: "InventoryItem",
+            aggregateId: reservation.sku,
             occurredAt: now,
             payload: {
               reservationId: reservation.id,
@@ -211,8 +227,8 @@ export function commitReservation(
         events: [
           {
             type: "InventoryReservationCommitted",
-            aggregateType: "InventoryReservation",
-            aggregateId: reservation.id,
+            aggregateType: "InventoryItem",
+            aggregateId: reservation.sku,
             occurredAt: now,
             payload: {
               reservationId: reservation.id,
@@ -267,13 +283,56 @@ export function expireReservation(
     events: [
       {
         type: "InventoryReservationExpired",
-        aggregateType: "InventoryReservation",
-        aggregateId: reservation.id,
+        aggregateType: "InventoryItem",
+        aggregateId: reservation.sku,
         occurredAt: now,
         payload: {
           reservationId: reservation.id,
           sku: reservation.sku,
           quantity: reservation.quantity,
+        },
+      },
+    ],
+  });
+}
+
+export function restockInventory(
+  item: InventoryItem,
+  input: Readonly<{
+    quantity: number;
+    now: Date;
+  }>,
+): Result<
+  {
+    item: InventoryItem;
+    events: readonly InventoryEvent[];
+  },
+  RestockInventoryError
+> {
+  if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
+    return err({
+      type: "InvalidRestockQuantity",
+      message: "Restock quantity must be a positive integer",
+    });
+  }
+
+  const restocked: InventoryItem = {
+    ...item,
+    onHand: item.onHand + input.quantity,
+    updatedAt: input.now,
+  };
+
+  return ok({
+    item: restocked,
+    events: [
+      {
+        type: "InventoryRestocked",
+        aggregateType: "InventoryItem",
+        aggregateId: item.sku,
+        occurredAt: input.now,
+        payload: {
+          sku: item.sku,
+          quantity: input.quantity,
         },
       },
     ],

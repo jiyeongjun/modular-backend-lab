@@ -1,12 +1,12 @@
 # modular-backend-lab
 
-A modular TypeScript backend reference architecture for business domains that grow over time.
+A modular TypeScript backend reference architecture for separating concerns across complex business domains and building modules that are easier to change, extend, and reuse.
 
 [한국어 문서](./README.ko.md)
 
 ## Architecture Summary
 
-The core rule is simple: adapters stay at the edge and business behavior stays in the portable core.
+The organizing rule is explicit: HTTP, database, queue, scheduler, and telemetry concerns stay in outer adapters, while business state and rules stay in the domain/application core.
 
 ```txt
 HTTP / Workers / Scheduler
@@ -26,13 +26,16 @@ Infrastructure adapters
 - OpenTelemetry = telemetry instrumentation boundary
 - Grafana stack = local observability runtime
 - Domain/Application = portable core
+- Domain events = append-only business ledger
+- Current state tables = read model projections
+- Outbox events = integration publishing queue
 - TypeScript compiler = first-line architecture guard
 
 ## Design Philosophy
 
-This repository is organized around explicit boundaries: portable domain/application code,
-adapter-based infrastructure, explicit transactions, typed boundary validation, and repeatable
-quality gates.
+This repository is organized for backend systems where requirements grow across multiple business
+domains. It keeps domain/application code portable, infrastructure adapter-based, transactions
+explicit, boundary validation typed, and quality gates repeatable.
 
 ### Safety
 
@@ -40,7 +43,8 @@ quality gates.
   compile-time feedback.
 - Zod is limited to boundary validation for HTTP, env, and external payloads.
 - Expected business failures return `Result` instead of exceptions.
-- State changes and outbox writes happen inside explicit UnitOfWork transactions.
+- State changes append `domain_events`, update current projections, and write outbox rows inside
+  explicit UnitOfWork transactions.
 - dependency-cruiser and `scripts/convention-scan.ts` check framework/infra leakage, unsafe casts,
   and weakened strictness.
 
@@ -56,6 +60,10 @@ quality gates.
 
 - Domain, application, ports, infra, HTTP, jobs, and workers are separated to keep change scope local
   as modules grow.
+- Modules center on domain/application/ports so the core can remain reusable when HTTP, DB, or queue
+  adapters differ.
+- Order, payment, inventory, fulfillment, and refund keep append-only domain event streams as the
+  basis for state changes, while current tables serve reads and idempotency lookups.
 - `AGENTS.md`, `docs/`, and `ai/skills/` document future AI/human maintenance rules.
 - Biome, dependency-cruiser, convention scanner, and CI quality gates provide repeatable verification.
 - Dependencies use exact versions and a lockfile, with Node Active LTS documented as policy.
@@ -90,6 +98,49 @@ Queue backends are isolated behind ports. Core processors do not know BullMQ, SQ
 OpenTelemetry and Grafana are runtime instrumentation boundaries. Pure domain logic does not log,
 emit metrics, or start traces directly.
 
+## Event Sourcing And Projections
+
+Modules tied to money, stock, settlement evidence, or delivery state use append-only
+`domain_events` as the business ledger. Current tables such as `orders`, `payments`,
+`inventory_items`, `fulfillments`, and `refunds` are projections for API responses, idempotency
+lookups, and batch scans.
+
+`outbox_events` is not the event store. `domain_events` records aggregate state and audit/accounting
+evidence; `outbox_events` handles integration publishing, retry, and delivery failure isolation.
+State-changing usecases keep domain event append, projection update, and outbox writes in the same
+short transaction.
+
+This repository does not implement an ERP or accounting module. It leaves immutable
+payment/refund/inventory/fulfillment events that can be transformed later into downstream accounting
+events or ERP adapters.
+
+## How New Requirements Fit
+
+The expected flexibility here does not mean new requirements require no code changes. It means the
+change location should be explicit: domain, application orchestration, port, adapter, or projection.
+The goal is to keep the affected surface small and reviewable.
+
+Examples:
+
+- Partial refunds, exchanges, or return inspection policies should extend `refund/domain` with new
+  states and events, then let `process-refund` orchestrate the new transition. PG and inventory calls
+  stay behind existing ports.
+- ERP journal integration should not place ERP SDKs in domain/application code. An accounting
+  adapter/job can transform `PaymentAuthorized`, `RefundPaymentRefunded`,
+  `InventoryReservationCommitted`, `InventoryRestocked`, and `FulfillmentDelivered` from
+  `domain_events` or outbox-published events.
+- A new payment provider should add a new `PaymentGateway` adapter instead of replacing payment core.
+  Provider-specific responses are normalized at the adapter boundary, while payment state changes
+  remain in the same domain event stream.
+- Warehouse, lot, or serial-number inventory requirements should extend the `inventory` aggregate
+  key, event payloads, and projections. Checkout continues to call the inventory application port
+  without coupling to payment or HTTP details.
+- New operations screens or reports should add current-table projections or separate read models
+  from `domain_events`, instead of bending the domain model around a query shape.
+- New loyalty, coupon, or settlement modules should follow the same `src/modules/{module}` layer
+  shape. Cross-module links should use domain events, application ports, outbox jobs, or explicit
+  orchestration, not imports from another module's `infra` or `http` layer.
+
 ## Folder Structure
 
 ```txt
@@ -106,11 +157,12 @@ ai/skills       operational playbooks for future AI agents
 Current business modules:
 
 ```txt
-src/modules/order/       payment transition and outbox reference
-src/modules/inventory/   stock reservation, release, commit, and expiration reference
-src/modules/payment/     Toss Payments confirm/cancel adapter and payment state reference
+src/modules/order/       order lifecycle event stream and payment-state projection
+src/modules/inventory/   SKU movement ledger with reservation, release, commit, expiration projections
+src/modules/payment/     payment lifecycle event stream behind a Toss Payments adapter
 src/modules/checkout/    order validation, inventory, payment, and compensation orchestration reference
-src/modules/fulfillment/ post-payment fulfillment, labels, and shipment status sync reference
+src/modules/fulfillment/ fulfillment, label, and shipment status event stream with projection
+src/modules/refund/      refund request, approval, PG refund, restock, and completion event stream
 ```
 
 Each module follows the same layer shape:
@@ -146,9 +198,9 @@ loads. It does not introduce an effect system such as `Effect` or `fp-ts`; the g
 boundaries and state modeling with standard TypeScript.
 
 Transaction boundaries are explicit in application usecases. Domain code does not know about
-transactions, and Kysely transactions do not leak past infrastructure adapters. State changes and
-outbox writes happen together inside short UnitOfWork transactions, while external calls such as
-payment or carrier API requests happen outside DB transactions.
+transactions, and Kysely transactions do not leak past infrastructure adapters. Domain event append,
+current projection update, and outbox writes happen together inside short UnitOfWork transactions,
+while external calls such as payment or carrier API requests happen outside DB transactions.
 
 ## Local Setup
 
@@ -183,6 +235,12 @@ curl -X POST http://localhost:3000/fulfillments/fulfillment-1/pack
 curl -X POST http://localhost:3000/fulfillments/fulfillment-1/label \
   -H 'content-type: application/json' \
   -d '{"idempotencyKey":"label-1"}'
+
+curl -X POST http://localhost:3000/refunds \
+  -H 'content-type: application/json' \
+  -d '{"orderId":"order-1","paymentId":"payment-1","amount":10000,"currency":"KRW","reason":"customer request","returnRequired":true,"restock":{"sku":"sku-1","quantity":2},"idempotencyKey":"refund-1"}'
+
+curl -X POST http://localhost:3000/refunds/refund-1/process
 ```
 
 Run the outbox job:

@@ -24,7 +24,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
-    "test:integration": "vitest run '**/*.integration.test.ts'",
+    "test:integration": "vitest run .integration.test.ts",
     "db:migrate": "tsx src/infra/db/migrator.ts up",
     "db:rollback": "tsx src/infra/db/migrator.ts down",
     "worker:outbox": "tsx src/workers/worker-app.ts outbox-publisher",

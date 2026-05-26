@@ -7,12 +7,18 @@ import * as initialMigration from "./migrations/0001_initial.js";
 import * as inventoryMigration from "./migrations/0002_inventory.js";
 import * as paymentMigration from "./migrations/0003_payment.js";
 import * as fulfillmentMigration from "./migrations/0004_fulfillment.js";
+import * as inventoryRestockMigration from "./migrations/0005_inventory_restock.js";
+import * as refundMigration from "./migrations/0006_refund.js";
+import * as domainEventsMigration from "./migrations/0007_domain_events.js";
 
 const migrations: Record<string, Migration> = {
   "0001_initial": initialMigration,
   "0002_inventory": inventoryMigration,
   "0003_payment": paymentMigration,
   "0004_fulfillment": fulfillmentMigration,
+  "0005_inventory_restock": inventoryRestockMigration,
+  "0006_refund": refundMigration,
+  "0007_domain_events": domainEventsMigration,
 };
 
 export function createMigrator(db: Db): Migrator {

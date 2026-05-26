@@ -2,17 +2,20 @@ import { describe, expect, it } from "vitest";
 import {
   createReleaseReservationUseCase,
   createReserveInventoryUseCase,
+  createRestockInventoryUseCase,
 } from "../application/index.js";
 import type {
   ActiveInventoryReservation,
   InventoryEvent,
   InventoryItem,
   InventoryReservation,
+  InventoryRestock,
 } from "../domain/index.js";
 import type {
   InventoryItemRepository,
   InventoryOutboxRepository,
   InventoryReservationRepository,
+  InventoryRestockRepository,
   InventoryUnitOfWork,
 } from "../ports/index.js";
 
@@ -59,6 +62,7 @@ function createFakeUow(input: {
   uow: InventoryUnitOfWork;
   savedItems: InventoryItem[];
   createdReservations: ActiveInventoryReservation[];
+  createdRestocks: InventoryRestock[];
   savedReservations: InventoryReservation[];
   savedEvents: InventoryEvent[];
   transactions: number;
@@ -66,12 +70,14 @@ function createFakeUow(input: {
   const state: {
     savedItems: InventoryItem[];
     createdReservations: ActiveInventoryReservation[];
+    createdRestocks: InventoryRestock[];
     savedReservations: InventoryReservation[];
     savedEvents: InventoryEvent[];
     transactions: number;
   } = {
     savedItems: [],
     createdReservations: [],
+    createdRestocks: [],
     savedReservations: [],
     savedEvents: [],
     transactions: 0,
@@ -80,6 +86,9 @@ function createFakeUow(input: {
   const items: InventoryItemRepository = {
     findBySku: async () => input.item,
     findBySkuForUpdate: async () => input.item,
+    create: async (item) => {
+      state.savedItems.push(item);
+    },
     save: async (item) => {
       state.savedItems.push(item);
     },
@@ -97,6 +106,13 @@ function createFakeUow(input: {
     },
   };
 
+  const restocks: InventoryRestockRepository = {
+    findByIdempotencyKey: async () => null,
+    create: async (restock) => {
+      state.createdRestocks.push(restock);
+    },
+  };
+
   const outbox: InventoryOutboxRepository = {
     saveAll: async (events) => {
       state.savedEvents.push(...events);
@@ -110,6 +126,9 @@ function createFakeUow(input: {
     get createdReservations() {
       return state.createdReservations;
     },
+    get createdRestocks() {
+      return state.createdRestocks;
+    },
     get savedReservations() {
       return state.savedReservations;
     },
@@ -122,7 +141,7 @@ function createFakeUow(input: {
     uow: {
       async withTransaction(work) {
         state.transactions += 1;
-        return work({ items, reservations, outbox });
+        return work({ items, restocks, reservations, outbox });
       },
     },
   };
@@ -186,5 +205,25 @@ describe("inventory usecases", () => {
     expect(fake.savedItems[0]?.reserved).toBe(0);
     expect(fake.savedReservations[0]?.status).toBe("RELEASED");
     expect(fake.savedEvents[0]?.type).toBe("InventoryReservationReleased");
+  });
+
+  it("restocks inventory with an idempotent operation record", async () => {
+    const fake = createFakeUow({ item: createItem({ onHand: 8 }) });
+    const restock = createRestockInventoryUseCase({
+      uow: fake.uow,
+      now: () => now,
+      generateId: () => "restock-1",
+    });
+
+    const result = await restock({
+      sku: "sku-1",
+      quantity: 2,
+      idempotencyKey: "restock-1",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(fake.savedItems[0]?.onHand).toBe(10);
+    expect(fake.createdRestocks[0]?.idempotencyKey).toBe("restock-1");
+    expect(fake.savedEvents[0]?.type).toBe("InventoryRestocked");
   });
 });

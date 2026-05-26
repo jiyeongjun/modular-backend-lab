@@ -151,7 +151,7 @@ describe("payment usecases", () => {
 
     expect(result.ok).toBe(true);
     expect(fake.payments[0]?.status).toBe("AUTHORIZED");
-    expect(fake.events[0]?.type).toBe("PaymentAuthorized");
+    expect(fake.events.map((event) => event.type)).toEqual(["PaymentStarted", "PaymentAuthorized"]);
     expect(fake.transactions()).toBe(3);
   });
 
@@ -212,7 +212,10 @@ describe("payment usecases", () => {
 
     expect(result.ok).toBe(false);
     expect(fake.payments[0]?.status).toBe("FAILED");
-    expect(fake.events[0]?.type).toBe("PaymentAuthorizationFailed");
+    expect(fake.events.map((event) => event.type)).toEqual([
+      "PaymentStarted",
+      "PaymentAuthorizationFailed",
+    ]);
   });
 
   it("cancels an authorized payment through the provider", async () => {

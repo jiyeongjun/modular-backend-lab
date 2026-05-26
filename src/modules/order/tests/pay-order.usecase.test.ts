@@ -50,6 +50,10 @@ function createFakeUow(order: Order | null): {
   const orders: OrderRepository = {
     findById: async () => order,
     findByIdForUpdate: async () => order,
+    create: async (saved, events) => {
+      state.savedOrders.push(saved);
+      state.savedEvents.push(...events);
+    },
     save: async (saved) => {
       state.savedOrders.push(saved);
     },

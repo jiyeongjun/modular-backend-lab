@@ -118,7 +118,7 @@ export function createCancelPaymentUseCase(deps: {
         return cancelled;
       }
 
-      await payments.save(cancelled.value.payment);
+      await payments.save(cancelled.value.payment, cancelled.value.events);
       await outbox.saveAll(cancelled.value.events);
 
       return ok({ payment: cancelled.value.payment, idempotent: false });

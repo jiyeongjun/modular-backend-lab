@@ -1,56 +1,36 @@
----
-task: "Bootstrap the complete modular backend reference repository"
-status: "done"
-knowns:
-  - "The current workspace is empty and has no git repository."
-  - "The bootstrap source is /Users/jiyeongjun/Desktop/bootstrap_prompt_modular_backend_lab_final.md."
-  - "Local Node is v24.12.0 and pnpm is available."
-unknowns:
-  - "Whether Docker is available for Testcontainers integration tests."
-next_step: "Hand off final results."
-updated_at: "2026-05-24T07:01:00.000Z"
----
+# Event-Sourced Business Ledgers For Current Domains
 
-## Inputs
+Status: Completed
 
-- `/Users/jiyeongjun/Desktop/bootstrap_prompt_modular_backend_lab_final.md`
-- Empty workspace at `/Users/jiyeongjun/Desktop/modular-backend-lab`
-- Local toolchain: Node, npm, corepack, pnpm
+## Goal
+
+Rework the currently persisted business domains toward an ERP/accounting-friendly event sourcing
+pattern.
+
+## Scope
+
+- Add a `domain_events` table with aggregate stream versioning and append-only semantics.
+- Record domain events for order, payment, inventory, fulfillment, and refund state changes.
+- Keep current tables as projections/read models updated in the same transaction.
+- Keep outbox writes in the same transaction but separate from the event store.
+- Update README Korean and English docs to explain event sourcing and ERP/accounting intent.
+
+## Non-Goals
+
+- Do not turn `outbox_events` into the event store.
+- Do not event-source `checkout`; it remains application orchestration.
+- Do not add a new framework, effect system, ORM, or message broker.
+- Do not build a full ERP/accounting module in this contract.
 
 ## Completion Criteria
 
-- Required repository files and close equivalents exist.
-- Dependencies are installed with exact versions and `pnpm-lock.yaml` is present.
-- Source code demonstrates clean modular backend boundaries.
-- Tests cover risk-bearing order, usecase, route, repository, and outbox job behavior.
-- Documentation and AI maintenance files explain rules for future work.
-- Quality gates are run and repaired where feasible.
+- Each persisted domain state transition appends domain events before or with projection updates.
+- Projection version tracks the applied aggregate event stream version.
+- Integration coverage proves representative rows are written to `domain_events`.
+- README documents source-of-truth events, projections, outbox separation, and ERP/accounting usage.
+- `pnpm quality` passes.
 
-## Mutation Plan
+## Verification Result
 
-- Create base package, Node, TypeScript, Biome, Vitest, dependency-cruiser, Docker, and CI configuration.
-- Implement shared primitives, infrastructure adapters, HTTP adapter, workers, jobs, order module, and tests.
-- Add docs, AI skill files, and convention scanner.
-- Install dependencies, format, run quality gates, and fix issues.
-
-## Verification
-
-- `pnpm install --frozen-lockfile` after dependencies are resolved.
-- `pnpm typecheck`
-- `pnpm check`
-- `pnpm test`
-- `pnpm arch:check`
-- `pnpm conventions:scan`
-- `pnpm build`
-
-## Work Log
-
-- Contract aligned from bootstrap prompt.
-- Created package/tooling config, source architecture, tests, docs, AI playbooks, observability config, CI, and lockfile.
-- Installed exact pnpm dependencies and repaired TypeScript/Biome/test issues.
-- Ran `pnpm quality` successfully.
-- Ran `pnpm install --frozen-lockfile` successfully.
-
-## Result
-
-- Done. The repository is bootstrapped and quality gates pass.
+- `pnpm test:integration`: 5 files passed, 11 tests passed, 5 Docker prerequisite tests skipped.
+- `pnpm quality`: 27 files passed, 85 tests passed, 5 Docker prerequisite tests skipped.

@@ -3,6 +3,7 @@ import { isDockerAvailable, withTestDatabase } from "../../../../test/integratio
 import { OptimisticConcurrencyError } from "../../../shared/errors/index.js";
 import {
   createFulfillment,
+  fulfillmentCreatedEvent,
   markFulfillmentPacked,
   purchaseShippingLabel,
   type TrackableFulfillment,
@@ -49,7 +50,8 @@ describe.runIf(dockerAvailable)("fulfillment repository integration", () => {
   it("creates, loads, saves, and iterates trackable fulfillments", async () => {
     await withTestDatabase(async (db) => {
       const fulfillments = createKyselyFulfillmentRepository(db);
-      await fulfillments.create(createReadyFulfillment());
+      const ready = createReadyFulfillment();
+      await fulfillments.create(ready, [fulfillmentCreatedEvent(ready)]);
 
       const loaded = await fulfillments.findById("fulfillment-1");
       if (loaded === null) {
@@ -76,11 +78,28 @@ describe.runIf(dockerAvailable)("fulfillment repository integration", () => {
         throw new Error("expected label to be purchased");
       }
 
-      await fulfillments.save(labeled.value.fulfillment);
+      await fulfillments.save(labeled.value.fulfillment, [
+        ...packed.value.events,
+        ...labeled.value.events,
+      ]);
 
       const saved = await fulfillments.findByLabelIdempotencyKey("label-1");
+      const domainEventRows = await db
+        .selectFrom("domain_events")
+        .selectAll()
+        .where("aggregate_type", "=", "Fulfillment")
+        .where("aggregate_id", "=", "fulfillment-1")
+        .orderBy("aggregate_version", "asc")
+        .execute();
+
       expect(saved?.status).toBe("LABEL_PURCHASED");
-      expect(saved?.version).toBe(1);
+      expect(saved?.version).toBe(2);
+      expect(domainEventRows.map((row) => row.event_type)).toEqual([
+        "FulfillmentCreated",
+        "FulfillmentPacked",
+        "ShippingLabelPurchased",
+      ]);
+      expect(domainEventRows.map((row) => row.aggregate_version)).toEqual([0, 1, 2]);
 
       const reader = createKyselyFulfillmentReader(db);
       const trackable: TrackableFulfillment[] = [];
@@ -96,7 +115,8 @@ describe.runIf(dockerAvailable)("fulfillment repository integration", () => {
   it("detects stale fulfillment versions", async () => {
     await withTestDatabase(async (db) => {
       const fulfillments = createKyselyFulfillmentRepository(db);
-      await fulfillments.create(createReadyFulfillment());
+      const ready = createReadyFulfillment();
+      await fulfillments.create(ready, [fulfillmentCreatedEvent(ready)]);
 
       const first = await fulfillments.findById("fulfillment-1");
       const stale = await fulfillments.findById("fulfillment-1");
@@ -110,11 +130,11 @@ describe.runIf(dockerAvailable)("fulfillment repository integration", () => {
         throw new Error("expected fulfillment to be packed");
       }
 
-      await fulfillments.save(packed.value.fulfillment);
+      await fulfillments.save(packed.value.fulfillment, packed.value.events);
 
-      await expect(fulfillments.save(stalePacked.value.fulfillment)).rejects.toBeInstanceOf(
-        OptimisticConcurrencyError,
-      );
+      await expect(
+        fulfillments.save(stalePacked.value.fulfillment, stalePacked.value.events),
+      ).rejects.toBeInstanceOf(OptimisticConcurrencyError);
     });
   });
 });

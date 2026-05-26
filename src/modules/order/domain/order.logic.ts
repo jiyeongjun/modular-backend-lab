@@ -1,7 +1,20 @@
 import { err, ok, type Result } from "../../../shared/result/index.js";
 import type { PayOrderError } from "./order.errors.js";
 import type { OrderEvent } from "./order.events.js";
-import type { Order, PaidOrder } from "./order.js";
+import type { Order, PaidOrder, PendingOrder } from "./order.js";
+
+export function orderCreatedEvent(order: PendingOrder): OrderEvent {
+  return {
+    type: "OrderCreated",
+    aggregateType: "Order",
+    aggregateId: order.id,
+    occurredAt: order.createdAt,
+    payload: {
+      orderId: order.id,
+      totalAmount: order.totalAmount,
+    },
+  };
+}
 
 export function payOrder(
   order: Order,

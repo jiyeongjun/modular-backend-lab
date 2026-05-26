@@ -1,4 +1,9 @@
-import type { CarrierCode, CarrierShipmentStatus, ShippingAddress } from "./fulfillment.js";
+import type {
+  CarrierCode,
+  CarrierShipmentStatus,
+  ShipmentPackage,
+  ShippingAddress,
+} from "./fulfillment.js";
 
 export type FulfillmentCreated = Readonly<{
   type: "FulfillmentCreated";
@@ -8,7 +13,9 @@ export type FulfillmentCreated = Readonly<{
   payload: {
     fulfillmentId: string;
     orderId: string;
+    idempotencyKey: string;
     recipient: ShippingAddress;
+    package: ShipmentPackage;
   };
 }>;
 
@@ -20,6 +27,7 @@ export type FulfillmentPacked = Readonly<{
   payload: {
     fulfillmentId: string;
     orderId: string;
+    packedAt: Date;
   };
 }>;
 
@@ -31,9 +39,12 @@ export type ShippingLabelPurchased = Readonly<{
   payload: {
     fulfillmentId: string;
     orderId: string;
+    labelIdempotencyKey: string;
     carrier: CarrierCode;
     carrierShipmentId: string;
     trackingNumber: string;
+    carrierStatus: CarrierShipmentStatus;
+    labelPurchasedAt: Date;
   };
 }>;
 
@@ -47,6 +58,7 @@ export type FulfillmentShipped = Readonly<{
     orderId: string;
     carrierStatus: CarrierShipmentStatus;
     trackingNumber: string;
+    shippedAt: Date;
   };
 }>;
 
@@ -60,6 +72,8 @@ export type FulfillmentDelivered = Readonly<{
     orderId: string;
     carrierStatus: CarrierShipmentStatus;
     trackingNumber: string;
+    shippedAt: Date;
+    deliveredAt: Date;
   };
 }>;
 
@@ -72,6 +86,7 @@ export type FulfillmentCancelled = Readonly<{
     fulfillmentId: string;
     orderId: string;
     reason: string;
+    cancelledAt: Date;
   };
 }>;
 

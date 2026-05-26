@@ -15,16 +15,18 @@ Use this process when adding a new domain module.
 9. Implement application usecase.
 10. Add application tests with fakes only where useful.
 11. Add database migration if needed.
-12. Implement Kysely repository and mappers.
-13. Add infra integration tests for persistence changes.
-14. Add Hono route and Zod schema.
-15. Add HTTP route tests for contract behavior.
-16. Add job/worker if needed.
-17. Add queue adapter only if needed.
-18. Add observability signal if useful.
-19. Update README/docs.
-20. Run quality gates.
-21. Record an architecture decision if adding new patterns.
+12. For stateful business aggregates, append domain events and update current projections in the
+    repository transaction boundary.
+13. Implement Kysely repository and mappers.
+14. Add infra integration tests for persistence changes.
+15. Add Hono route and Zod schema.
+16. Add HTTP route tests for contract behavior.
+17. Add job/worker if needed.
+18. Add queue adapter only if needed.
+19. Add observability signal if useful.
+20. Update README/docs.
+21. Run quality gates.
+22. Record an architecture decision if adding new patterns.
 
 ## Checklist
 
@@ -32,6 +34,7 @@ Use this process when adding a new domain module.
 - Application imports only domain, ports, and shared code.
 - Ports do not import infra or HTTP.
 - DB rows are mapped explicitly.
+- Domain event store and outbox are separate tables with separate purposes.
 - Zod schemas stay at boundaries.
 - Expected failures return `Result`.
 - Transactions are explicit.

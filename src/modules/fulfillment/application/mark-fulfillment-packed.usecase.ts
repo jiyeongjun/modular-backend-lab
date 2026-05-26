@@ -56,7 +56,7 @@ export function createMarkFulfillmentPackedUseCase(deps: {
         return err(packed.error);
       }
 
-      await fulfillments.save(packed.value.fulfillment);
+      await fulfillments.save(packed.value.fulfillment, packed.value.events);
       await outbox.saveAll(packed.value.events);
 
       return ok({ fulfillment: packed.value.fulfillment, idempotent: false });

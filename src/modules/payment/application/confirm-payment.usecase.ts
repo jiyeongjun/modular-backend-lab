@@ -7,6 +7,7 @@ import {
   failPayment,
   type Payment,
   type PendingPayment,
+  paymentStartedEvent,
   type StartPaymentError,
   startPayment,
 } from "../domain/index.js";
@@ -119,7 +120,7 @@ export function createConfirmPaymentUseCase(deps: {
         return authorized;
       }
 
-      await payments.save(authorized.value.payment);
+      await payments.save(authorized.value.payment, authorized.value.events);
       await outbox.saveAll(authorized.value.events);
 
       return ok({ payment: authorized.value.payment, idempotent });
@@ -150,7 +151,7 @@ export function createConfirmPaymentUseCase(deps: {
         return;
       }
 
-      await payments.save(failed.value.payment);
+      await payments.save(failed.value.payment, failed.value.events);
       await outbox.saveAll(failed.value.events);
     });
 
@@ -181,7 +182,7 @@ export function createConfirmPaymentUseCase(deps: {
         return;
       }
 
-      await payments.save(failed.value.payment);
+      await payments.save(failed.value.payment, failed.value.events);
       await outbox.saveAll(failed.value.events);
     });
 
@@ -237,7 +238,7 @@ export function createConfirmPaymentUseCase(deps: {
       return err(started.error);
     }
 
-    const created = await deps.uow.withTransaction(async ({ payments }) => {
+    const created = await deps.uow.withTransaction(async ({ payments, outbox }) => {
       const existingOrderPayment = await payments.findByOrderId(command.orderId);
       if (existingOrderPayment !== null) {
         const error: ConfirmPaymentUseCaseError = {
@@ -248,7 +249,9 @@ export function createConfirmPaymentUseCase(deps: {
         return err(error);
       }
 
-      await payments.create(started.value);
+      const events = [paymentStartedEvent(started.value)];
+      await payments.create(started.value, events);
+      await outbox.saveAll(events);
       return ok(started.value);
     });
 

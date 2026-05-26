@@ -67,8 +67,9 @@ export function createCreateFulfillmentUseCase(deps: {
         return err(created.error);
       }
 
-      await fulfillments.create(created.value);
-      await outbox.saveAll([fulfillmentCreatedEvent(created.value)]);
+      const events = [fulfillmentCreatedEvent(created.value)];
+      await fulfillments.create(created.value, events);
+      await outbox.saveAll(events);
 
       return ok({ fulfillment: created.value, idempotent: false });
     });

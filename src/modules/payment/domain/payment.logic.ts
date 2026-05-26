@@ -60,6 +60,23 @@ export function startPayment(input: StartPaymentInput): Result<PendingPayment, S
   });
 }
 
+export function paymentStartedEvent(payment: PendingPayment): PaymentEvent {
+  return {
+    type: "PaymentStarted",
+    aggregateType: "Payment",
+    aggregateId: payment.id,
+    occurredAt: payment.createdAt,
+    payload: {
+      paymentId: payment.id,
+      orderId: payment.orderId,
+      provider: payment.provider,
+      amount: payment.amount,
+      providerPaymentKey: payment.providerPaymentKey,
+      confirmIdempotencyKey: payment.confirmIdempotencyKey,
+    },
+  };
+}
+
 export function authorizePayment(
   payment: Payment,
   authorization: PaymentAuthorization,
@@ -105,6 +122,10 @@ export function authorizePayment(
               orderId: payment.orderId,
               amount: payment.amount,
               providerPaymentKey: payment.providerPaymentKey,
+              providerStatus: authorized.providerStatus ?? authorization.providerStatus,
+              method: authorized.method,
+              receiptUrl: authorized.receiptUrl,
+              authorizedAt: authorized.authorizedAt,
             },
           },
         ],
@@ -152,7 +173,10 @@ export function failPayment(
               orderId: payment.orderId,
               amount: payment.amount,
               providerPaymentKey: payment.providerPaymentKey,
+              providerStatus: failure.providerStatus,
               failureCode: failure.code,
+              failureMessage: failure.message,
+              failedAt: failed.failedAt,
             },
           },
         ],
@@ -200,7 +224,10 @@ export function cancelPayment(
               orderId: payment.orderId,
               amount: payment.amount,
               providerPaymentKey: payment.providerPaymentKey,
+              cancelIdempotencyKey: cancellation.cancelIdempotencyKey,
+              providerStatus: cancellation.providerStatus,
               reason: cancellation.cancelReason,
+              cancelledAt: cancelled.cancelledAt,
             },
           },
         ],

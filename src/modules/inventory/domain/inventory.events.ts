@@ -1,11 +1,24 @@
+export type InventoryStockOpened = Readonly<{
+  type: "InventoryStockOpened";
+  aggregateType: "InventoryItem";
+  aggregateId: string;
+  occurredAt: Date;
+  payload: {
+    sku: string;
+    onHand: number;
+    reserved: number;
+  };
+}>;
+
 export type InventoryReserved = Readonly<{
   type: "InventoryReserved";
-  aggregateType: "InventoryReservation";
+  aggregateType: "InventoryItem";
   aggregateId: string;
   occurredAt: Date;
   payload: {
     reservationId: string;
     sku: string;
+    idempotencyKey: string;
     quantity: number;
     expiresAt: Date;
   };
@@ -13,7 +26,7 @@ export type InventoryReserved = Readonly<{
 
 export type InventoryReservationReleased = Readonly<{
   type: "InventoryReservationReleased";
-  aggregateType: "InventoryReservation";
+  aggregateType: "InventoryItem";
   aggregateId: string;
   occurredAt: Date;
   payload: {
@@ -25,7 +38,7 @@ export type InventoryReservationReleased = Readonly<{
 
 export type InventoryReservationCommitted = Readonly<{
   type: "InventoryReservationCommitted";
-  aggregateType: "InventoryReservation";
+  aggregateType: "InventoryItem";
   aggregateId: string;
   occurredAt: Date;
   payload: {
@@ -37,7 +50,7 @@ export type InventoryReservationCommitted = Readonly<{
 
 export type InventoryReservationExpired = Readonly<{
   type: "InventoryReservationExpired";
-  aggregateType: "InventoryReservation";
+  aggregateType: "InventoryItem";
   aggregateId: string;
   occurredAt: Date;
   payload: {
@@ -47,8 +60,21 @@ export type InventoryReservationExpired = Readonly<{
   };
 }>;
 
+export type InventoryRestocked = Readonly<{
+  type: "InventoryRestocked";
+  aggregateType: "InventoryItem";
+  aggregateId: string;
+  occurredAt: Date;
+  payload: {
+    sku: string;
+    quantity: number;
+  };
+}>;
+
 export type InventoryEvent =
+  | InventoryStockOpened
   | InventoryReserved
   | InventoryReservationReleased
   | InventoryReservationCommitted
-  | InventoryReservationExpired;
+  | InventoryReservationExpired
+  | InventoryRestocked;

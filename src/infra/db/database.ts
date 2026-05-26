@@ -24,6 +24,18 @@ export type OutboxEventsTable = {
   created_at: TimestampColumn;
 };
 
+export type DomainEventsTable = {
+  id: string;
+  aggregate_type: string;
+  aggregate_id: string;
+  aggregate_version: number;
+  event_type: string;
+  event_schema_version: number;
+  payload: unknown;
+  occurred_at: TimestampColumn;
+  created_at: TimestampColumn;
+};
+
 export type InventoryItemsTable = {
   sku: string;
   on_hand: number;
@@ -46,6 +58,14 @@ export type InventoryReservationsTable = {
   version: number;
   created_at: TimestampColumn;
   updated_at: TimestampColumn;
+};
+
+export type InventoryRestocksTable = {
+  id: string;
+  sku: string;
+  idempotency_key: string;
+  quantity: number;
+  created_at: TimestampColumn;
 };
 
 export type PaymentsTable = {
@@ -101,6 +121,31 @@ export type FulfillmentsTable = {
   updated_at: TimestampColumn;
 };
 
+export type RefundsTable = {
+  id: string;
+  order_id: string;
+  payment_id: string;
+  idempotency_key: string;
+  payment_refund_idempotency_key: string;
+  restock_idempotency_key: string | null;
+  status: string;
+  amount: number;
+  currency: string;
+  reason: string;
+  return_required: boolean;
+  restock_sku: string | null;
+  restock_quantity: number | null;
+  approved_at: TimestampColumn | null;
+  rejected_at: TimestampColumn | null;
+  rejection_reason: string | null;
+  payment_refunded_at: TimestampColumn | null;
+  restocked_at: TimestampColumn | null;
+  completed_at: TimestampColumn | null;
+  version: number;
+  created_at: TimestampColumn;
+  updated_at: TimestampColumn;
+};
+
 export type KyselyMigrationTable = {
   name: string;
   timestamp: TimestampColumn;
@@ -112,12 +157,15 @@ export type KyselyMigrationLockTable = {
 };
 
 export type Database = {
+  domain_events: DomainEventsTable;
   fulfillments: FulfillmentsTable;
   inventory_items: InventoryItemsTable;
+  inventory_restocks: InventoryRestocksTable;
   inventory_reservations: InventoryReservationsTable;
   orders: OrdersTable;
   outbox_events: OutboxEventsTable;
   payments: PaymentsTable;
+  refunds: RefundsTable;
   kysely_migration: KyselyMigrationTable;
   kysely_migration_lock: KyselyMigrationLockTable;
 };
@@ -125,6 +173,8 @@ export type Database = {
 export type OrderRow = Selectable<OrdersTable>;
 export type OrderInsert = Insertable<OrdersTable>;
 export type OrderUpdate = Updateable<OrdersTable>;
+export type DomainEventRow = Selectable<DomainEventsTable>;
+export type DomainEventInsert = Insertable<DomainEventsTable>;
 export type OutboxEventRow = Selectable<OutboxEventsTable>;
 export type OutboxEventInsert = Insertable<OutboxEventsTable>;
 export type InventoryItemRow = Selectable<InventoryItemsTable>;
@@ -133,9 +183,14 @@ export type InventoryItemUpdate = Updateable<InventoryItemsTable>;
 export type InventoryReservationRow = Selectable<InventoryReservationsTable>;
 export type InventoryReservationInsert = Insertable<InventoryReservationsTable>;
 export type InventoryReservationUpdate = Updateable<InventoryReservationsTable>;
+export type InventoryRestockRow = Selectable<InventoryRestocksTable>;
+export type InventoryRestockInsert = Insertable<InventoryRestocksTable>;
 export type PaymentRow = Selectable<PaymentsTable>;
 export type PaymentInsert = Insertable<PaymentsTable>;
 export type PaymentUpdate = Updateable<PaymentsTable>;
 export type FulfillmentRow = Selectable<FulfillmentsTable>;
 export type FulfillmentInsert = Insertable<FulfillmentsTable>;
 export type FulfillmentUpdate = Updateable<FulfillmentsTable>;
+export type RefundRow = Selectable<RefundsTable>;
+export type RefundInsert = Insertable<RefundsTable>;
+export type RefundUpdate = Updateable<RefundsTable>;

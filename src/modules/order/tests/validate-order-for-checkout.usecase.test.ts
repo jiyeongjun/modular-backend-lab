@@ -45,6 +45,7 @@ function createUseCase(order: Order | null): ValidateOrderForCheckoutUseCase {
   const orders: OrderRepository = {
     findById: async () => order,
     findByIdForUpdate: async () => order,
+    create: async () => undefined,
     save: async () => undefined,
   };
   const outbox: OutboxRepository = {
