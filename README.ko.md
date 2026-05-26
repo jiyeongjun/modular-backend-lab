@@ -36,8 +36,10 @@ Infrastructure adapters
 ## 설계 기준
 
 이 레포는 프레임워크 사용법보다 요구사항이 늘어날 때 변경 지점이 어디인지 드러나는 구조에 초점을
-둡니다. 도메인 규칙, usecase orchestration, persistence, delivery, external integration을 분리하고,
-이벤트 원장, projection, outbox, quality gate를 일관된 운영 단위로 둡니다.
+둡니다. 도메인 규칙, usecase orchestration(여러 도메인 흐름을 조합하는 계층), persistence(DB 저장),
+delivery(HTTP/job/worker 진입점), external integration(PG, ERP, WMS 같은 외부 시스템 연결)을
+분리합니다. 상태 변경은 이벤트 원장(append-only 기록), projection(조회용 현재 상태), outbox(외부
+발행 큐), quality gate(반복 검증)로 운영합니다.
 
 ### 경계와 타입
 
@@ -47,6 +49,13 @@ Infrastructure adapters
 - 예상 가능한 비즈니스 실패는 exception이 아니라 `Result`로 반환합니다.
 - dependency-cruiser와 `scripts/convention-scan.ts`가 framework/infra leakage, unsafe casts,
   strictness 약화를 검사합니다.
+
+### TypeScript 안의 함수형 스타일
+
+이 구조는 특정 함수형 framework를 전제로 하지 않습니다. 대신 Domain 계층에서 순수 함수, 불변 상태
+전이, discriminated union, exhaustive check, `Result` 반환을 기본 스타일로 둡니다. 큰 batch나 상태
+동기화처럼 처리 대상이 커질 수 있는 흐름은 필요할 때 `AsyncIterable`로 표현합니다. `Effect`,
+`fp-ts` 같은 별도 effect system을 도입하지 않고, 표준 TypeScript로 경계와 상태를 명시합니다.
 
 ### 상태 변경과 원장
 
@@ -191,13 +200,6 @@ src/modules/refund/      환불 요청, 승인, PG 환불, 재입고, 완료 eve
   담당합니다.
 - `tests/`: domain behavior, usecase orchestration, route contract, repository behavior를 risk
   기준으로 검증합니다.
-
-이 구조는 특정 함수형 framework를 전제로 하지 않지만, TypeScript 안에서 유지 가능한 함수형
-스타일을 일부 차용합니다. Domain 계층에서는 class hierarchy보다 순수 함수, 불변 상태 전이,
-discriminated union, exhaustive check, `Result` 반환을 선호합니다. 큰 batch나 상태 동기화처럼
-처리 대상이 커질 수 있는 흐름은 필요할 때 `AsyncIterable`로 표현해 unbounded array load를 피합니다.
-`Effect`, `fp-ts` 같은 별도 effect system을 도입하지 않고, 표준 TypeScript로 경계와 상태를
-명시하는 쪽을 선택합니다.
 
 트랜잭션 경계는 application usecase에서 명시적으로 잡습니다. Domain은 transaction을 알지 못하고,
 Kysely transaction도 application 밖으로 새지 않습니다. domain event append, current projection

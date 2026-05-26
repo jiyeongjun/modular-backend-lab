@@ -36,9 +36,11 @@ Infrastructure adapters
 ## Design Principles
 
 This repository focuses less on framework mechanics and more on making change locations explicit as
-requirements grow. Domain rules, usecase orchestration, persistence, delivery, and external
-integrations are separated, with event ledger, projections, outbox, and quality gates treated as
-repeatable operating units.
+requirements grow. Domain rules, usecase orchestration (workflow coordination), persistence
+(database adapters), delivery (HTTP/job/worker entry points), and external integrations
+(PG/ERP/WMS-style adapters) are separated. Event ledger (append-only history), projections
+(read/current-state models), outbox (integration publishing queue), and quality gates (repeatable
+checks) are treated as operating units.
 
 ### Boundaries And Types
 
@@ -48,6 +50,14 @@ repeatable operating units.
 - Expected business failures return `Result` instead of exceptions.
 - dependency-cruiser and `scripts/convention-scan.ts` check framework/infra leakage, unsafe casts,
   and weakened strictness.
+
+### Functional Style In TypeScript
+
+This structure does not assume a specific functional programming framework. In the domain layer, it
+uses pure functions, immutable state transitions, discriminated unions, exhaustive checks, and
+`Result` returns as the default style. Large batch or status sync flows use `AsyncIterable` where the
+input can grow. It does not introduce an effect system such as `Effect` or `fp-ts`; boundaries and
+state are modeled with standard TypeScript.
 
 ### State Changes And Ledgers
 
@@ -192,13 +202,6 @@ Each layer has a narrow role:
   usecases, and maps responses.
 - `tests/`: risk-based coverage for domain behavior, usecase orchestration, route contracts, and
   repository behavior.
-
-The structure borrows a practical subset of functional programming style without depending on a
-specific FP framework. In the domain layer, the code favors pure functions, immutable state
-transitions, discriminated unions, exhaustive checks, and `Result` returns over class hierarchies.
-For large batch or status sync flows, it uses `AsyncIterable` where useful to avoid unbounded array
-loads. It does not introduce an effect system such as `Effect` or `fp-ts`; the goal is explicit
-boundaries and state modeling with standard TypeScript.
 
 Transaction boundaries are explicit in application usecases. Domain code does not know about
 transactions, and Kysely transactions do not leak past infrastructure adapters. Domain event append,
