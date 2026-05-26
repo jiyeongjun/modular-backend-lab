@@ -1,6 +1,6 @@
 import type { OrderRow, OrderUpdate } from "../../../infra/db/database.js";
 import type { Currency } from "../../../shared/money/index.js";
-import type { Order, OrderStatus } from "../domain/index.js";
+import type { Order, OrderBase, OrderStatus } from "../domain/index.js";
 
 function toOrderStatus(value: string): OrderStatus {
   if (value === "PENDING" || value === "PAID" || value === "CANCELLED") {
@@ -17,18 +17,48 @@ function toCurrency(value: string): Currency {
 }
 
 export function toOrder(row: OrderRow): Order {
-  return {
+  const base: OrderBase = {
     id: row.id,
-    status: toOrderStatus(row.status),
     totalAmount: {
       amount: row.total_amount,
       currency: toCurrency(row.currency),
     },
-    paidAt: row.paid_at,
     version: row.version,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+
+  switch (toOrderStatus(row.status)) {
+    case "PENDING":
+      if (row.paid_at !== null) {
+        throw new Error(`Pending order ${row.id} must not have paid_at`);
+      }
+      return {
+        ...base,
+        status: "PENDING",
+        paidAt: null,
+      };
+
+    case "PAID":
+      if (row.paid_at === null) {
+        throw new Error(`Paid order ${row.id} must have paid_at`);
+      }
+      return {
+        ...base,
+        status: "PAID",
+        paidAt: row.paid_at,
+      };
+
+    case "CANCELLED":
+      if (row.paid_at !== null) {
+        throw new Error(`Cancelled order ${row.id} must not have paid_at`);
+      }
+      return {
+        ...base,
+        status: "CANCELLED",
+        paidAt: null,
+      };
+  }
 }
 
 export function toOrderUpdate(order: Order): OrderUpdate {

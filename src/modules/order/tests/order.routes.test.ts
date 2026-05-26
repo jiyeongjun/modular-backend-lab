@@ -4,11 +4,11 @@ import { createApp } from "../../../http/app.js";
 import { createMetricsRegistry } from "../../../infra/telemetry/metrics.js";
 import { err, ok } from "../../../shared/result/index.js";
 import type { PayOrderUseCase } from "../application/index.js";
-import type { Order } from "../domain/index.js";
+import type { PaidOrder } from "../domain/index.js";
 
 const now = new Date("2026-01-01T00:00:00.000Z");
 
-function createOrder(overrides: Partial<Order> = {}): Order {
+function createPaidOrder(overrides: Partial<Omit<PaidOrder, "status" | "paidAt">> = {}): PaidOrder {
   return {
     id: "order-1",
     status: "PAID",
@@ -31,7 +31,7 @@ function createTestApp(payOrderUseCase: PayOrderUseCase) {
 
 describe("order routes", () => {
   it("returns a success response", async () => {
-    const app = createTestApp(async () => ok(createOrder()));
+    const app = createTestApp(async () => ok(createPaidOrder()));
 
     const response = await app.request("/orders/order-1/pay", { method: "POST" });
     const body = (await response.json()) as { data: { id: string; status: string } };
@@ -62,7 +62,7 @@ describe("order routes", () => {
   });
 
   it("maps invalid parameters to 400", async () => {
-    const app = createTestApp(async () => ok(createOrder()));
+    const app = createTestApp(async () => ok(createPaidOrder()));
 
     const response = await app.request("/orders/%20/pay", { method: "POST" });
 

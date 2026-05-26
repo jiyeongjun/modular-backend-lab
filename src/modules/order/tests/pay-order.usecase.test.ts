@@ -1,14 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { createPayOrderUseCase } from "../application/index.js";
-import type { Order, OrderEvent } from "../domain/index.js";
+import type { CancelledOrder, Order, OrderEvent, PendingOrder } from "../domain/index.js";
 import type { OrderRepository, OrderUnitOfWork, OutboxRepository } from "../ports/index.js";
 
 const now = new Date("2026-01-01T00:00:00.000Z");
 
-function createOrder(overrides: Partial<Order> = {}): Order {
+function createPendingOrder(
+  overrides: Partial<Omit<PendingOrder, "status" | "paidAt">> = {},
+): PendingOrder {
   return {
     id: "order-1",
     status: "PENDING",
+    totalAmount: { amount: 10_000, currency: "KRW" },
+    paidAt: null,
+    version: 0,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}
+
+function createCancelledOrder(
+  overrides: Partial<Omit<CancelledOrder, "status" | "paidAt">> = {},
+): CancelledOrder {
+  return {
+    id: "order-1",
+    status: "CANCELLED",
     totalAmount: { amount: 10_000, currency: "KRW" },
     paidAt: null,
     version: 0,
@@ -86,7 +103,7 @@ describe("createPayOrderUseCase", () => {
   });
 
   it("saves the paid order and outbox event on success", async () => {
-    const fake = createFakeUow(createOrder());
+    const fake = createFakeUow(createPendingOrder());
     const payOrder = createPayOrderUseCase({ uow: fake.uow, now: () => now });
 
     const result = await payOrder({ orderId: "order-1" });
@@ -100,7 +117,7 @@ describe("createPayOrderUseCase", () => {
   });
 
   it("does not save order or outbox event on business failure", async () => {
-    const fake = createFakeUow(createOrder({ status: "CANCELLED" }));
+    const fake = createFakeUow(createCancelledOrder());
     const payOrder = createPayOrderUseCase({ uow: fake.uow, now: () => now });
 
     const result = await payOrder({ orderId: "order-1" });

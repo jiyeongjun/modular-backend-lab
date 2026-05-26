@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { isDockerAvailable, withTestDatabase } from "../../../../test/integration/test-db.js";
 import { OptimisticConcurrencyError } from "../../../shared/errors/index.js";
+import type { PaidOrder, PendingOrder } from "../domain/index.js";
 import { createKyselyOrderRepository, createKyselyOutboxRepository } from "../infra/index.js";
 
 const dockerAvailable = isDockerAvailable();
 const now = new Date("2026-01-01T00:00:00.000Z");
+
+function toPaidOrder(order: PendingOrder): PaidOrder {
+  return {
+    ...order,
+    status: "PAID",
+    paidAt: now,
+    updatedAt: now,
+  };
+}
 
 describe.runIf(dockerAvailable)("order repository integration", () => {
   it("runs migrations, loads and saves orders, and persists outbox events", async () => {
@@ -28,16 +38,11 @@ describe.runIf(dockerAvailable)("order repository integration", () => {
       const order = await orders.findById("order-1");
 
       expect(order?.status).toBe("PENDING");
-      if (order === null) {
-        throw new Error("expected order");
+      if (order?.status !== "PENDING") {
+        throw new Error("expected pending order");
       }
 
-      await orders.save({
-        ...order,
-        status: "PAID",
-        paidAt: now,
-        updatedAt: now,
-      });
+      await orders.save(toPaidOrder(order));
       await outbox.saveAll([
         {
           type: "OrderPaid",
@@ -81,15 +86,15 @@ describe.runIf(dockerAvailable)("order repository integration", () => {
       const first = await orders.findById("order-1");
       const stale = await orders.findById("order-1");
 
-      if (first === null || stale === null) {
-        throw new Error("expected seeded orders");
+      if (first?.status !== "PENDING" || stale?.status !== "PENDING") {
+        throw new Error("expected seeded pending orders");
       }
 
-      await orders.save({ ...first, status: "PAID", paidAt: now, updatedAt: now });
+      await orders.save(toPaidOrder(first));
 
-      await expect(
-        orders.save({ ...stale, status: "PAID", paidAt: now, updatedAt: now }),
-      ).rejects.toBeInstanceOf(OptimisticConcurrencyError);
+      await expect(orders.save(toPaidOrder(stale))).rejects.toBeInstanceOf(
+        OptimisticConcurrencyError,
+      );
     });
   });
 });

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { Order } from "../domain/index.js";
+import type { CancelledOrder, PaidOrder, PendingOrder } from "../domain/index.js";
 import { payOrder } from "../domain/index.js";
 
 const now = new Date("2026-01-01T00:00:00.000Z");
 
-function createOrder(overrides: Partial<Order> = {}): Order {
+function createPendingOrder(
+  overrides: Partial<Omit<PendingOrder, "status" | "paidAt">> = {},
+): PendingOrder {
   return {
     id: "order-1",
     status: "PENDING",
@@ -17,9 +19,37 @@ function createOrder(overrides: Partial<Order> = {}): Order {
   };
 }
 
+function createPaidOrder(overrides: Partial<Omit<PaidOrder, "status" | "paidAt">> = {}): PaidOrder {
+  return {
+    id: "order-1",
+    status: "PAID",
+    totalAmount: { amount: 10_000, currency: "KRW" },
+    paidAt: now,
+    version: 0,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}
+
+function createCancelledOrder(
+  overrides: Partial<Omit<CancelledOrder, "status" | "paidAt">> = {},
+): CancelledOrder {
+  return {
+    id: "order-1",
+    status: "CANCELLED",
+    totalAmount: { amount: 10_000, currency: "KRW" },
+    paidAt: null,
+    version: 0,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}
+
 describe("payOrder", () => {
   it("pays a pending order and returns an OrderPaid event", () => {
-    const order = createOrder();
+    const order = createPendingOrder();
     const result = payOrder(order, now);
 
     expect(result.ok).toBe(true);
@@ -45,7 +75,7 @@ describe("payOrder", () => {
   });
 
   it("rejects non-pending orders", () => {
-    const result = payOrder(createOrder({ status: "PAID", paidAt: now }), now);
+    const result = payOrder(createPaidOrder(), now);
 
     expect(result).toEqual({
       ok: false,
@@ -53,8 +83,20 @@ describe("payOrder", () => {
     });
   });
 
+  it("rejects cancelled orders", () => {
+    const result = payOrder(createCancelledOrder(), now);
+
+    expect(result).toEqual({
+      ok: false,
+      error: { type: "OrderCancelled", message: "Cancelled orders cannot be paid" },
+    });
+  });
+
   it("rejects empty orders", () => {
-    const result = payOrder(createOrder({ totalAmount: { amount: 0, currency: "KRW" } }), now);
+    const result = payOrder(
+      createPendingOrder({ totalAmount: { amount: 0, currency: "KRW" } }),
+      now,
+    );
 
     expect(result).toEqual({
       ok: false,
