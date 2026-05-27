@@ -13,6 +13,39 @@ export type OrdersTable = {
   updated_at: TimestampColumn;
 };
 
+export type AuthEmailCredentialsTable = {
+  id: string;
+  customer_id: string;
+  idempotency_key: string;
+  email: string;
+  password_hash: string;
+  status: string;
+  failed_login_count: number;
+  registered_at: TimestampColumn;
+  password_updated_at: TimestampColumn;
+  last_login_at: TimestampColumn | null;
+  locked_at: TimestampColumn | null;
+  disabled_at: TimestampColumn | null;
+  version: number;
+  created_at: TimestampColumn;
+  updated_at: TimestampColumn;
+};
+
+export type AuthSessionsTable = {
+  id: string;
+  customer_id: string;
+  credential_id: string;
+  token_hash: string;
+  status: string;
+  issued_at: TimestampColumn;
+  expires_at: TimestampColumn;
+  revoked_at: TimestampColumn | null;
+  expired_at: TimestampColumn | null;
+  version: number;
+  created_at: TimestampColumn;
+  updated_at: TimestampColumn;
+};
+
 export type OutboxEventsTable = {
   id: string;
   event_type: string;
@@ -270,6 +303,8 @@ export type KyselyMigrationLockTable = {
 };
 
 export type Database = {
+  auth_email_credentials: AuthEmailCredentialsTable;
+  auth_sessions: AuthSessionsTable;
   coupon_redemptions: CouponRedemptionsTable;
   coupons: CouponsTable;
   customers: CustomersTable;
@@ -292,6 +327,12 @@ export type Database = {
 export type OrderRow = Selectable<OrdersTable>;
 export type OrderInsert = Insertable<OrdersTable>;
 export type OrderUpdate = Updateable<OrdersTable>;
+export type AuthEmailCredentialRow = Selectable<AuthEmailCredentialsTable>;
+export type AuthEmailCredentialInsert = Insertable<AuthEmailCredentialsTable>;
+export type AuthEmailCredentialUpdate = Updateable<AuthEmailCredentialsTable>;
+export type AuthSessionRow = Selectable<AuthSessionsTable>;
+export type AuthSessionInsert = Insertable<AuthSessionsTable>;
+export type AuthSessionUpdate = Updateable<AuthSessionsTable>;
 export type DomainEventRow = Selectable<DomainEventsTable>;
 export type DomainEventInsert = Insertable<DomainEventsTable>;
 export type OutboxEventRow = Selectable<OutboxEventsTable>;

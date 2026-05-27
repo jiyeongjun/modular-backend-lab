@@ -1,6 +1,14 @@
 import { Hono } from "hono";
 import type { Logger } from "pino";
 import type { HttpMetrics } from "../infra/telemetry/metrics.js";
+import type {
+  DisableEmailCredentialUseCase,
+  LoginWithEmailUseCase,
+  RegisterEmailCredentialUseCase,
+  RevokeAuthSessionUseCase,
+  VerifyAuthSessionUseCase,
+} from "../modules/auth/application/index.js";
+import { createAuthRoutes } from "../modules/auth/http/index.js";
 import type { SubmitCheckoutUseCase } from "../modules/checkout/application/index.js";
 import { createCheckoutRoutes } from "../modules/checkout/http/index.js";
 import type {
@@ -73,6 +81,11 @@ import { createMetricsRoutes } from "./routes/metrics.routes.js";
 export function createApp(deps: {
   logger: Logger;
   metrics: HttpMetrics;
+  registerEmailCredentialUseCase: RegisterEmailCredentialUseCase;
+  loginWithEmailUseCase: LoginWithEmailUseCase;
+  verifyAuthSessionUseCase: VerifyAuthSessionUseCase;
+  revokeAuthSessionUseCase: RevokeAuthSessionUseCase;
+  disableEmailCredentialUseCase: DisableEmailCredentialUseCase;
   registerCustomerUseCase: RegisterCustomerUseCase;
   suspendCustomerUseCase: SuspendCustomerUseCase;
   reactivateCustomerUseCase: ReactivateCustomerUseCase;
@@ -115,6 +128,16 @@ export function createApp(deps: {
 
   app.route("/", createHealthRoutes());
   app.route("/", createMetricsRoutes(deps.metrics));
+  app.route(
+    "/",
+    createAuthRoutes({
+      registerEmailCredentialUseCase: deps.registerEmailCredentialUseCase,
+      loginWithEmailUseCase: deps.loginWithEmailUseCase,
+      verifyAuthSessionUseCase: deps.verifyAuthSessionUseCase,
+      revokeAuthSessionUseCase: deps.revokeAuthSessionUseCase,
+      disableEmailCredentialUseCase: deps.disableEmailCredentialUseCase,
+    }),
+  );
   app.route(
     "/",
     createCustomerRoutes({

@@ -5,6 +5,18 @@ import { createDatabase } from "./infra/db/db.js";
 import { createLogger } from "./infra/logger/logger.js";
 import { createMetricsRegistry } from "./infra/telemetry/metrics.js";
 import { initializeTelemetry } from "./infra/telemetry/telemetry.js";
+import {
+  createDisableEmailCredentialUseCase,
+  createLoginWithEmailUseCase,
+  createRegisterEmailCredentialUseCase,
+  createRevokeAuthSessionUseCase,
+  createVerifyAuthSessionUseCase,
+} from "./modules/auth/application/index.js";
+import {
+  createKyselyAuthUnitOfWork,
+  createLocalAuthTokenService,
+  createPbkdf2PasswordHasher,
+} from "./modules/auth/infra/index.js";
 import { createSubmitCheckoutUseCase } from "./modules/checkout/application/index.js";
 import {
   createCheckoutInventoryAdapter,
@@ -99,6 +111,37 @@ const config = loadConfig();
 const logger = createLogger(config);
 const telemetry = initializeTelemetry(config, logger);
 const db = createDatabase(config);
+const authUow = createKyselyAuthUnitOfWork(db);
+const passwordHasher = createPbkdf2PasswordHasher();
+const authTokenService = createLocalAuthTokenService();
+const registerEmailCredentialUseCase = createRegisterEmailCredentialUseCase({
+  uow: authUow,
+  passwordHasher,
+  now: () => new Date(),
+  generateId: () => uuidGenerator.generate(),
+});
+const loginWithEmailUseCase = createLoginWithEmailUseCase({
+  uow: authUow,
+  passwordHasher,
+  tokenService: authTokenService,
+  now: () => new Date(),
+  generateSessionId: () => uuidGenerator.generate(),
+  sessionTtlMs: 24 * 60 * 60 * 1000,
+});
+const verifyAuthSessionUseCase = createVerifyAuthSessionUseCase({
+  uow: authUow,
+  tokenService: authTokenService,
+  now: () => new Date(),
+});
+const revokeAuthSessionUseCase = createRevokeAuthSessionUseCase({
+  uow: authUow,
+  tokenService: authTokenService,
+  now: () => new Date(),
+});
+const disableEmailCredentialUseCase = createDisableEmailCredentialUseCase({
+  uow: authUow,
+  now: () => new Date(),
+});
 const customerUow = createKyselyCustomerUnitOfWork(db);
 const registerCustomerUseCase = createRegisterCustomerUseCase({
   uow: customerUow,
@@ -292,6 +335,11 @@ const getSettlementUseCase = createGetSettlementUseCase({
 const app = createApp({
   logger,
   metrics: createMetricsRegistry(),
+  registerEmailCredentialUseCase,
+  loginWithEmailUseCase,
+  verifyAuthSessionUseCase,
+  revokeAuthSessionUseCase,
+  disableEmailCredentialUseCase,
   registerCustomerUseCase,
   suspendCustomerUseCase,
   reactivateCustomerUseCase,

@@ -15,6 +15,7 @@ import * as promotionMigration from "./migrations/0009_promotion.js";
 import * as returnsMigration from "./migrations/0010_returns.js";
 import * as notificationMigration from "./migrations/0011_notification.js";
 import * as customerMigration from "./migrations/0012_customer.js";
+import * as authMigration from "./migrations/0013_auth.js";
 
 const migrations: Record<string, Migration> = {
   "0001_initial": initialMigration,
@@ -29,6 +30,7 @@ const migrations: Record<string, Migration> = {
   "0010_returns": returnsMigration,
   "0011_notification": notificationMigration,
   "0012_customer": customerMigration,
+  "0013_auth": authMigration,
 };
 
 export function createMigrator(db: Db): Migrator {
