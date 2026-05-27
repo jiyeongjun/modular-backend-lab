@@ -46,6 +46,30 @@ export type AuthSessionsTable = {
   updated_at: TimestampColumn;
 };
 
+export type AddressBookAddressesTable = {
+  id: string;
+  customer_id: string;
+  idempotency_key: string;
+  purpose: string;
+  status: string;
+  label: string | null;
+  recipient_name: string;
+  phone: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  region: string | null;
+  postal_code: string;
+  country: string;
+  is_default: boolean;
+  disabled_at: TimestampColumn | null;
+  disable_reason: string | null;
+  added_at: TimestampColumn;
+  version: number;
+  created_at: TimestampColumn;
+  updated_at: TimestampColumn;
+};
+
 export type OutboxEventsTable = {
   id: string;
   event_type: string;
@@ -303,6 +327,7 @@ export type KyselyMigrationLockTable = {
 };
 
 export type Database = {
+  address_book_addresses: AddressBookAddressesTable;
   auth_email_credentials: AuthEmailCredentialsTable;
   auth_sessions: AuthSessionsTable;
   coupon_redemptions: CouponRedemptionsTable;
@@ -327,6 +352,9 @@ export type Database = {
 export type OrderRow = Selectable<OrdersTable>;
 export type OrderInsert = Insertable<OrdersTable>;
 export type OrderUpdate = Updateable<OrdersTable>;
+export type AddressBookAddressRow = Selectable<AddressBookAddressesTable>;
+export type AddressBookAddressInsert = Insertable<AddressBookAddressesTable>;
+export type AddressBookAddressUpdate = Updateable<AddressBookAddressesTable>;
 export type AuthEmailCredentialRow = Selectable<AuthEmailCredentialsTable>;
 export type AuthEmailCredentialInsert = Insertable<AuthEmailCredentialsTable>;
 export type AuthEmailCredentialUpdate = Updateable<AuthEmailCredentialsTable>;

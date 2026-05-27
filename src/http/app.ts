@@ -2,6 +2,13 @@ import { Hono } from "hono";
 import type { Logger } from "pino";
 import type { HttpMetrics } from "../infra/telemetry/metrics.js";
 import type {
+  AddAddressUseCase,
+  DisableAddressUseCase,
+  SetDefaultAddressUseCase,
+  UpdateAddressUseCase,
+} from "../modules/address-book/application/index.js";
+import { createAddressBookRoutes } from "../modules/address-book/http/index.js";
+import type {
   DisableEmailCredentialUseCase,
   LoginWithEmailUseCase,
   RegisterEmailCredentialUseCase,
@@ -81,6 +88,10 @@ import { createMetricsRoutes } from "./routes/metrics.routes.js";
 export function createApp(deps: {
   logger: Logger;
   metrics: HttpMetrics;
+  addAddressUseCase: AddAddressUseCase;
+  updateAddressUseCase: UpdateAddressUseCase;
+  setDefaultAddressUseCase: SetDefaultAddressUseCase;
+  disableAddressUseCase: DisableAddressUseCase;
   registerEmailCredentialUseCase: RegisterEmailCredentialUseCase;
   loginWithEmailUseCase: LoginWithEmailUseCase;
   verifyAuthSessionUseCase: VerifyAuthSessionUseCase;
@@ -128,6 +139,15 @@ export function createApp(deps: {
 
   app.route("/", createHealthRoutes());
   app.route("/", createMetricsRoutes(deps.metrics));
+  app.route(
+    "/",
+    createAddressBookRoutes({
+      addAddressUseCase: deps.addAddressUseCase,
+      updateAddressUseCase: deps.updateAddressUseCase,
+      setDefaultAddressUseCase: deps.setDefaultAddressUseCase,
+      disableAddressUseCase: deps.disableAddressUseCase,
+    }),
+  );
   app.route(
     "/",
     createAuthRoutes({

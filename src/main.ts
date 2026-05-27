@@ -6,6 +6,13 @@ import { createLogger } from "./infra/logger/logger.js";
 import { createMetricsRegistry } from "./infra/telemetry/metrics.js";
 import { initializeTelemetry } from "./infra/telemetry/telemetry.js";
 import {
+  createAddAddressUseCase,
+  createDisableAddressUseCase,
+  createSetDefaultAddressUseCase,
+  createUpdateAddressUseCase,
+} from "./modules/address-book/application/index.js";
+import { createKyselyAddressBookUnitOfWork } from "./modules/address-book/infra/index.js";
+import {
   createDisableEmailCredentialUseCase,
   createLoginWithEmailUseCase,
   createRegisterEmailCredentialUseCase,
@@ -111,6 +118,24 @@ const config = loadConfig();
 const logger = createLogger(config);
 const telemetry = initializeTelemetry(config, logger);
 const db = createDatabase(config);
+const addressBookUow = createKyselyAddressBookUnitOfWork(db);
+const addAddressUseCase = createAddAddressUseCase({
+  uow: addressBookUow,
+  now: () => new Date(),
+  generateId: () => uuidGenerator.generate(),
+});
+const updateAddressUseCase = createUpdateAddressUseCase({
+  uow: addressBookUow,
+  now: () => new Date(),
+});
+const setDefaultAddressUseCase = createSetDefaultAddressUseCase({
+  uow: addressBookUow,
+  now: () => new Date(),
+});
+const disableAddressUseCase = createDisableAddressUseCase({
+  uow: addressBookUow,
+  now: () => new Date(),
+});
 const authUow = createKyselyAuthUnitOfWork(db);
 const passwordHasher = createPbkdf2PasswordHasher();
 const authTokenService = createLocalAuthTokenService();
@@ -335,6 +360,10 @@ const getSettlementUseCase = createGetSettlementUseCase({
 const app = createApp({
   logger,
   metrics: createMetricsRegistry(),
+  addAddressUseCase,
+  updateAddressUseCase,
+  setDefaultAddressUseCase,
+  disableAddressUseCase,
   registerEmailCredentialUseCase,
   loginWithEmailUseCase,
   verifyAuthSessionUseCase,

@@ -22,6 +22,7 @@ Infrastructure adapters
 
 - Hono = HTTP delivery adapter
 - Auth = credential/session module attached to customerId
+- Address-book = reusable address module attached to customerId
 - Kysely = persistence adapter
 - Scheduler/Worker = delivery/runtime adapter
 - BullMQ/SQS = queue adapter
@@ -66,8 +67,9 @@ functional library, boundaries and state are modeled with standard TypeScript.
   explicit UnitOfWork transactions.
 - Current tables are projections for reads and idempotency, while `outbox_events` is the integration
   publishing queue.
-- Customer, auth, order, payment, inventory, fulfillment, refund, settlement, promotion, returns, and
-  notification keep append-only domain event streams as the basis for state changes.
+- Customer, auth, address-book, order, payment, inventory, fulfillment, refund, settlement,
+  promotion, returns, and notification keep append-only domain event streams as the basis for state
+  changes.
 
 ### Performance-Conscious Design
 
@@ -114,11 +116,12 @@ emit metrics, or start traces directly.
 
 ## Event Sourcing And Projections
 
-Flows tied to customer lifecycle, auth sessions, money, stock, settlement readiness, coupon policy,
-returns, or delivery state use append-only `domain_events` as the business ledger. Current tables
-such as `customers`, `auth_email_credentials`, `auth_sessions`, `orders`, `payments`,
-`inventory_items`, `fulfillments`, `refunds`, `settlements`, `coupons`, `coupon_redemptions`, and
-`return_requests` are projections for API responses, idempotency lookups, and batch scans.
+Flows tied to customer lifecycle, auth sessions, address books, money, stock, settlement readiness,
+coupon policy, returns, or delivery state use append-only `domain_events` as the business ledger.
+Current tables such as `customers`, `auth_email_credentials`, `auth_sessions`,
+`address_book_addresses`, `orders`, `payments`, `inventory_items`, `fulfillments`, `refunds`,
+`settlements`, `coupons`, `coupon_redemptions`, and `return_requests` are projections for API
+responses, idempotency lookups, and batch scans.
 
 `outbox_events` is not the event store. `domain_events` records aggregate state and audit/accounting
 evidence; `outbox_events` handles integration publishing, retry, and delivery failure isolation.
@@ -149,6 +152,9 @@ spreading the change across unrelated flows.
 - Email/password login belongs in `auth`, which owns credential, password hash, and session token
   lifecycle. Password hashing and token generation stay behind ports, and raw passwords or raw
   tokens are not stored.
+- Reusable customer addresses belong in `address-book`, which owns address source data and default
+  address selection. `fulfillment` keeps shipment-time address snapshots instead of owning reusable
+  customer addresses.
 - External systems attach through ports and adapters. PGs, ERPs, WMSs, carriers, and notification
   systems stay outside the core, with adapters translating internal events and commands to their
   APIs.
@@ -179,6 +185,7 @@ Current business modules:
 src/modules/order/       order lifecycle event stream and payment-state projection
 src/modules/customer/    customer registration, suspension, reactivation, and closure event stream
 src/modules/auth/        email credential, login, session issue/verification/revocation event stream
+src/modules/address-book/ customer address add, update, default selection, and disable event stream
 src/modules/inventory/   SKU movement ledger with reservation, release, commit, expiration projections
 src/modules/payment/     payment lifecycle event stream behind a Toss Payments adapter
 src/modules/checkout/    order validation, inventory, payment, and compensation orchestration reference
@@ -280,6 +287,16 @@ curl -X POST http://localhost:3000/auth/sessions/verify \
 curl -X POST http://localhost:3000/auth/sessions/revoke \
   -H 'content-type: application/json' \
   -d '{"token":"session-token"}'
+
+curl -X POST http://localhost:3000/address-book/addresses \
+  -H 'content-type: application/json' \
+  -d '{"customerId":"customer-1","idempotencyKey":"address-add-1","purpose":"SHIPPING","makeDefault":true,"label":"Home","recipientName":"Kim","phone":"010-0000-0000","line1":"Seoul road 1","line2":null,"city":"Seoul","region":null,"postalCode":"12345","country":"KR"}'
+
+curl -X POST http://localhost:3000/address-book/addresses/address-1/default
+
+curl -X POST http://localhost:3000/address-book/addresses/address-1/disable \
+  -H 'content-type: application/json' \
+  -d '{"reason":"customer requested removal"}'
 
 curl -X POST http://localhost:3000/payments/confirm \
   -H 'content-type: application/json' \
