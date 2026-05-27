@@ -16,6 +16,10 @@ export function createRouteTestApp(overrides: RouteTestAppOverrides = {}) {
   return createApp({
     logger: overrides.logger ?? pino({ enabled: false }),
     metrics: overrides.metrics ?? createMetricsRegistry(),
+    registerCustomerUseCase: overrides.registerCustomerUseCase ?? unexpectedUseCase("customer"),
+    suspendCustomerUseCase: overrides.suspendCustomerUseCase ?? unexpectedUseCase("customer"),
+    reactivateCustomerUseCase: overrides.reactivateCustomerUseCase ?? unexpectedUseCase("customer"),
+    closeCustomerUseCase: overrides.closeCustomerUseCase ?? unexpectedUseCase("customer"),
     payOrderUseCase: overrides.payOrderUseCase ?? unexpectedUseCase("order"),
     reserveInventoryUseCase: overrides.reserveInventoryUseCase ?? unexpectedUseCase("inventory"),
     releaseReservationUseCase:

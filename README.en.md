@@ -65,8 +65,8 @@ functional library, boundaries and state are modeled with standard TypeScript.
   explicit UnitOfWork transactions.
 - Current tables are projections for reads and idempotency, while `outbox_events` is the integration
   publishing queue.
-- Order, payment, inventory, fulfillment, refund, settlement, promotion, returns, and notification
-  keep append-only domain event streams as the basis for state changes.
+- Customer, order, payment, inventory, fulfillment, refund, settlement, promotion, returns, and
+  notification keep append-only domain event streams as the basis for state changes.
 
 ### Performance-Conscious Design
 
@@ -113,10 +113,11 @@ emit metrics, or start traces directly.
 
 ## Event Sourcing And Projections
 
-Flows tied to money, stock, settlement readiness, coupon policy, returns, or delivery state use
-append-only `domain_events` as the business ledger. Current tables such as `orders`, `payments`,
-`inventory_items`, `fulfillments`, `refunds`, `settlements`, `coupons`, `coupon_redemptions`, and
-`return_requests` are projections for API responses, idempotency lookups, and batch scans.
+Flows tied to customer lifecycle, money, stock, settlement readiness, coupon policy, returns, or
+delivery state use append-only `domain_events` as the business ledger. Current tables such as
+`customers`, `orders`, `payments`, `inventory_items`, `fulfillments`, `refunds`, `settlements`,
+`coupons`, `coupon_redemptions`, and `return_requests` are projections for API responses,
+idempotency lookups, and batch scans.
 
 `outbox_events` is not the event store. `domain_events` records aggregate state and audit/accounting
 evidence; `outbox_events` handles integration publishing, retry, and delivery failure isolation.
@@ -143,6 +144,8 @@ spreading the change across unrelated flows.
 - Process changes add orchestration. Manual approval before refunds, automatic settlement after
   delivery, or compensation for inventory shortages can be connected through usecases, jobs, and
   outbox events without coupling modules directly.
+- Customer identity belongs in `customer`, which owns a stable `customerId` and lifecycle.
+  Email/password login and other credential mechanisms can attach later as a separate auth module.
 - External systems attach through ports and adapters. PGs, ERPs, WMSs, carriers, and notification
   systems stay outside the core, with adapters translating internal events and commands to their
   APIs.
@@ -171,6 +174,7 @@ Current business modules:
 
 ```txt
 src/modules/order/       order lifecycle event stream and payment-state projection
+src/modules/customer/    customer registration, suspension, reactivation, and closure event stream
 src/modules/inventory/   SKU movement ledger with reservation, release, commit, expiration projections
 src/modules/payment/     payment lifecycle event stream behind a Toss Payments adapter
 src/modules/checkout/    order validation, inventory, payment, and compensation orchestration reference
@@ -242,6 +246,20 @@ Example request:
 
 ```bash
 curl -X POST http://localhost:3000/orders/order-1/pay
+
+curl -X POST http://localhost:3000/customers \
+  -H 'content-type: application/json' \
+  -d '{"idempotencyKey":"customer-register-1","email":"customer@example.com","displayName":"Kim"}'
+
+curl -X POST http://localhost:3000/customers/customer-1/suspend \
+  -H 'content-type: application/json' \
+  -d '{"reason":"payment risk"}'
+
+curl -X POST http://localhost:3000/customers/customer-1/reactivate
+
+curl -X POST http://localhost:3000/customers/customer-1/close \
+  -H 'content-type: application/json' \
+  -d '{"reason":"customer requested closure"}'
 
 curl -X POST http://localhost:3000/payments/confirm \
   -H 'content-type: application/json' \

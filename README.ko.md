@@ -64,8 +64,8 @@ Domain 계층은 객체 상속 구조보다 순수 함수, 불변 상태 전이,
   UnitOfWork transaction 안에서 함께 처리합니다.
 - 현재 상태 테이블은 조회와 idempotency를 위한 projection이며, `outbox_events`는 외부 발행을 위한
   queue입니다.
-- `order`, `payment`, `inventory`, `fulfillment`, `refund`, `settlement`, `promotion`, `returns`,
-  `notification` 모듈은
+- `customer`, `order`, `payment`, `inventory`, `fulfillment`, `refund`, `settlement`, `promotion`,
+  `returns`, `notification` 모듈은
   append-only domain event stream을 기준으로 상태 변경 근거를 남깁니다.
 
 ### 성능을 의식한 경계
@@ -115,10 +115,11 @@ metrics, traces를 직접 수행하지 않습니다.
 
 ## Event Sourcing과 projection
 
-주문, 결제, 재고, 배송, 환불, 정산, 쿠폰, 반품처럼 돈, 재고, 운영 근거와 연결되는 흐름은 append-only
-`domain_events`를 상태 변경의 원장으로 둡니다. `orders`, `payments`, `inventory_items`,
-`fulfillments`, `refunds`, `settlements`, `coupons`, `coupon_redemptions`, `return_requests` 같은
-현재 상태 테이블은 API 응답, idempotency lookup, batch scan을 위한 projection입니다.
+고객 lifecycle, 주문, 결제, 재고, 배송, 환불, 정산, 쿠폰, 반품처럼 식별자, 돈, 재고, 운영 근거와
+연결되는 흐름은 append-only `domain_events`를 상태 변경의 원장으로 둡니다. `customers`, `orders`,
+`payments`, `inventory_items`, `fulfillments`, `refunds`, `settlements`, `coupons`,
+`coupon_redemptions`, `return_requests` 같은 현재 상태 테이블은 API 응답, idempotency lookup, batch
+scan을 위한 projection입니다.
 
 `outbox_events`는 event store가 아닙니다. `domain_events`는 aggregate 상태와 감사/회계 근거를 위한
 원장이고, `outbox_events`는 외부 시스템 발행 실패와 재시도를 다루는 integration queue입니다. 상태
@@ -143,6 +144,8 @@ ERP나 회계 기능은 이 레포 안에 직접 넣지 않습니다. `settlemen
   흘려보내지 않고 coupon usecase가 담당합니다.
 - 업무 절차가 늘어나면 orchestration을 추가합니다. 예를 들어 환불 전 관리자 승인, 배송 완료 후 자동
   정산, 재고 부족 시 보상 흐름은 여러 모듈을 직접 엮지 않고 usecase, job, outbox를 통해 연결합니다.
+- 고객 주체가 필요하면 `customer`가 안정적인 `customerId`와 lifecycle을 소유합니다. 이메일/비밀번호
+  로그인 같은 인증 수단은 별도 auth 모듈로 붙일 수 있게 customer core와 분리합니다.
 - 외부 시스템이 붙으면 port와 adapter를 추가합니다. PG, ERP, WMS, 배송사, 알림 시스템은 core에 직접
   들어오지 않고, 내부 event와 command를 외부 API에 맞게 변환하는 adapter로 둡니다.
 - 알림이 필요하면 `notification`의 요청, 발송, 실패, 재시도 상태를 사용합니다. 실제 이메일/SMS/Slack
@@ -169,6 +172,7 @@ ai/skills       operational playbooks for future AI agents
 
 ```txt
 src/modules/order/       주문 lifecycle event stream과 결제 상태 projection
+src/modules/customer/    고객 등록, 정지, 재활성화, 종료 lifecycle event stream
 src/modules/inventory/   SKU별 재고 이동 ledger, 예약, 해제, 확정, 만료 projection
 src/modules/payment/     Toss Payments adapter 뒤의 결제 lifecycle event stream
 src/modules/checkout/    주문 검증, 재고 예약, 결제 승인, 보상 흐름 orchestration
@@ -241,6 +245,20 @@ pnpm dev
 
 ```bash
 curl -X POST http://localhost:3000/orders/order-1/pay
+
+curl -X POST http://localhost:3000/customers \
+  -H 'content-type: application/json' \
+  -d '{"idempotencyKey":"customer-register-1","email":"customer@example.com","displayName":"Kim"}'
+
+curl -X POST http://localhost:3000/customers/customer-1/suspend \
+  -H 'content-type: application/json' \
+  -d '{"reason":"payment risk"}'
+
+curl -X POST http://localhost:3000/customers/customer-1/reactivate
+
+curl -X POST http://localhost:3000/customers/customer-1/close \
+  -H 'content-type: application/json' \
+  -d '{"reason":"customer requested closure"}'
 
 curl -X POST http://localhost:3000/payments/confirm \
   -H 'content-type: application/json' \

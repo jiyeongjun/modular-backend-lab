@@ -4,6 +4,13 @@ import type { HttpMetrics } from "../infra/telemetry/metrics.js";
 import type { SubmitCheckoutUseCase } from "../modules/checkout/application/index.js";
 import { createCheckoutRoutes } from "../modules/checkout/http/index.js";
 import type {
+  CloseCustomerUseCase,
+  ReactivateCustomerUseCase,
+  RegisterCustomerUseCase,
+  SuspendCustomerUseCase,
+} from "../modules/customer/application/index.js";
+import { createCustomerRoutes } from "../modules/customer/http/index.js";
+import type {
   CancelFulfillmentUseCase,
   CreateFulfillmentUseCase,
   MarkFulfillmentPackedUseCase,
@@ -66,6 +73,10 @@ import { createMetricsRoutes } from "./routes/metrics.routes.js";
 export function createApp(deps: {
   logger: Logger;
   metrics: HttpMetrics;
+  registerCustomerUseCase: RegisterCustomerUseCase;
+  suspendCustomerUseCase: SuspendCustomerUseCase;
+  reactivateCustomerUseCase: ReactivateCustomerUseCase;
+  closeCustomerUseCase: CloseCustomerUseCase;
   payOrderUseCase: PayOrderUseCase;
   reserveInventoryUseCase: ReserveInventoryUseCase;
   releaseReservationUseCase: ReleaseReservationUseCase;
@@ -104,6 +115,15 @@ export function createApp(deps: {
 
   app.route("/", createHealthRoutes());
   app.route("/", createMetricsRoutes(deps.metrics));
+  app.route(
+    "/",
+    createCustomerRoutes({
+      registerCustomerUseCase: deps.registerCustomerUseCase,
+      suspendCustomerUseCase: deps.suspendCustomerUseCase,
+      reactivateCustomerUseCase: deps.reactivateCustomerUseCase,
+      closeCustomerUseCase: deps.closeCustomerUseCase,
+    }),
+  );
   app.route("/", createOrderRoutes({ payOrderUseCase: deps.payOrderUseCase }));
   app.route(
     "/",

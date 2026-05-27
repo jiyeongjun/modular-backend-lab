@@ -202,6 +202,22 @@ export type CouponRedemptionsTable = {
   updated_at: TimestampColumn;
 };
 
+export type CustomersTable = {
+  id: string;
+  idempotency_key: string;
+  email: string;
+  display_name: string;
+  status: string;
+  suspension_reason: string | null;
+  closure_reason: string | null;
+  registered_at: TimestampColumn;
+  suspended_at: TimestampColumn | null;
+  closed_at: TimestampColumn | null;
+  version: number;
+  created_at: TimestampColumn;
+  updated_at: TimestampColumn;
+};
+
 export type ReturnRequestsTable = {
   id: string;
   order_id: string;
@@ -256,6 +272,7 @@ export type KyselyMigrationLockTable = {
 export type Database = {
   coupon_redemptions: CouponRedemptionsTable;
   coupons: CouponsTable;
+  customers: CustomersTable;
   domain_events: DomainEventsTable;
   fulfillments: FulfillmentsTable;
   inventory_items: InventoryItemsTable;
@@ -305,6 +322,9 @@ export type CouponUpdate = Updateable<CouponsTable>;
 export type CouponRedemptionRow = Selectable<CouponRedemptionsTable>;
 export type CouponRedemptionInsert = Insertable<CouponRedemptionsTable>;
 export type CouponRedemptionUpdate = Updateable<CouponRedemptionsTable>;
+export type CustomerRow = Selectable<CustomersTable>;
+export type CustomerInsert = Insertable<CustomersTable>;
+export type CustomerUpdate = Updateable<CustomersTable>;
 export type ReturnRequestRow = Selectable<ReturnRequestsTable>;
 export type ReturnRequestInsert = Insertable<ReturnRequestsTable>;
 export type ReturnRequestUpdate = Updateable<ReturnRequestsTable>;

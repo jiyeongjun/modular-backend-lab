@@ -12,6 +12,13 @@ import {
   createCheckoutPaymentAdapter,
 } from "./modules/checkout/infra/index.js";
 import {
+  createCloseCustomerUseCase,
+  createReactivateCustomerUseCase,
+  createRegisterCustomerUseCase,
+  createSuspendCustomerUseCase,
+} from "./modules/customer/application/index.js";
+import { createKyselyCustomerUnitOfWork } from "./modules/customer/infra/index.js";
+import {
   createCancelFulfillmentUseCase,
   createCreateFulfillmentUseCase,
   createGetFulfillmentForRefundUseCase,
@@ -92,6 +99,24 @@ const config = loadConfig();
 const logger = createLogger(config);
 const telemetry = initializeTelemetry(config, logger);
 const db = createDatabase(config);
+const customerUow = createKyselyCustomerUnitOfWork(db);
+const registerCustomerUseCase = createRegisterCustomerUseCase({
+  uow: customerUow,
+  now: () => new Date(),
+  generateId: () => uuidGenerator.generate(),
+});
+const suspendCustomerUseCase = createSuspendCustomerUseCase({
+  uow: customerUow,
+  now: () => new Date(),
+});
+const reactivateCustomerUseCase = createReactivateCustomerUseCase({
+  uow: customerUow,
+  now: () => new Date(),
+});
+const closeCustomerUseCase = createCloseCustomerUseCase({
+  uow: customerUow,
+  now: () => new Date(),
+});
 const orderUow = createKyselyOrderUnitOfWork(db);
 const payOrderUseCase = createPayOrderUseCase({
   uow: orderUow,
@@ -267,6 +292,10 @@ const getSettlementUseCase = createGetSettlementUseCase({
 const app = createApp({
   logger,
   metrics: createMetricsRegistry(),
+  registerCustomerUseCase,
+  suspendCustomerUseCase,
+  reactivateCustomerUseCase,
+  closeCustomerUseCase,
   payOrderUseCase,
   reserveInventoryUseCase,
   releaseReservationUseCase,
