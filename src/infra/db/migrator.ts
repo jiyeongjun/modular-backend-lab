@@ -19,6 +19,7 @@ import * as authMigration from "./migrations/0013_auth.js";
 import * as addressBookMigration from "./migrations/0014_address_book.js";
 import * as supportTicketMigration from "./migrations/0015_support_ticket.js";
 import * as authorizationMigration from "./migrations/0016_authorization.js";
+import * as auditLogMigration from "./migrations/0017_audit_log.js";
 
 const migrations: Record<string, Migration> = {
   "0001_initial": initialMigration,
@@ -37,6 +38,7 @@ const migrations: Record<string, Migration> = {
   "0014_address_book": addressBookMigration,
   "0015_support_ticket": supportTicketMigration,
   "0016_authorization": authorizationMigration,
+  "0017_audit_log": auditLogMigration,
 };
 
 export function createMigrator(db: Db): Migrator {

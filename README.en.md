@@ -23,6 +23,7 @@ Infrastructure adapters
 - Hono = HTTP delivery adapter
 - Auth = credential/session module attached to customerId
 - Authorization = actor role grant and permission decision module
+- Audit-log = immutable actor/action/resource/result audit record module
 - Address-book = reusable address module attached to customerId
 - Support-ticket = customer inquiry intake, assignment, resolution, and closure workflow module
 - Kysely = persistence adapter
@@ -69,9 +70,9 @@ functional library, boundaries and state are modeled with standard TypeScript.
   explicit UnitOfWork transactions.
 - Current tables are projections for reads and idempotency, while `outbox_events` is the integration
   publishing queue.
-- Customer, auth, authorization, address-book, order, payment, inventory, fulfillment, refund,
-  settlement, promotion, returns, notification, and support-ticket keep append-only domain event
-  streams as the basis for state changes.
+- Customer, auth, authorization, audit-log, address-book, order, payment, inventory, fulfillment,
+  refund, settlement, promotion, returns, notification, and support-ticket keep append-only domain
+  event streams as the basis for state changes.
 
 ### Performance-Conscious Design
 
@@ -118,13 +119,13 @@ emit metrics, or start traces directly.
 
 ## Event Sourcing And Projections
 
-Flows tied to customer lifecycle, auth sessions, role grants, address books, money, stock,
-settlement readiness, coupon policy, returns, support operations, or delivery state use append-only
-`domain_events` as the business ledger. Current tables such as `customers`,
-`auth_email_credentials`, `auth_sessions`, `authorization_role_grants`, `address_book_addresses`,
-`orders`, `payments`, `inventory_items`, `fulfillments`, `refunds`, `settlements`, `coupons`,
-`coupon_redemptions`, `return_requests`, and `support_tickets` are projections for API responses,
-idempotency lookups, and batch scans.
+Flows tied to customer lifecycle, auth sessions, role grants, audit records, address books, money,
+stock, settlement readiness, coupon policy, returns, support operations, or delivery state use
+append-only `domain_events` as the business ledger. Current tables such as `customers`,
+`auth_email_credentials`, `auth_sessions`, `authorization_role_grants`, `audit_log_records`,
+`address_book_addresses`, `orders`, `payments`, `inventory_items`, `fulfillments`, `refunds`,
+`settlements`, `coupons`, `coupon_redemptions`, `return_requests`, and `support_tickets` are
+projections for API responses, idempotency lookups, and batch scans.
 
 `outbox_events` is not the event store. `domain_events` records aggregate state and audit/accounting
 evidence; `outbox_events` handles integration publishing, retry, and delivery failure isolation.
@@ -158,6 +159,9 @@ spreading the change across unrelated flows.
 - Roles and permission decisions belong in `authorization`, which owns actor role grants and answers
   whether an actor may perform an action. `auth` owns sessions and credentials; `authorization` owns
   permission decisions.
+- Audit records belong in `audit-log`, which stores actor, action, resource, result, reason, and
+  metadata as immutable records. Authorization remains responsible for allow/deny decisions;
+  audit-log records the decision and execution outcome.
 - Reusable customer addresses belong in `address-book`, which owns address source data and default
   address selection. `fulfillment` keeps shipment-time address snapshots instead of owning reusable
   customer addresses.
@@ -195,6 +199,7 @@ src/modules/order/       order lifecycle event stream and payment-state projecti
 src/modules/customer/    customer registration, suspension, reactivation, and closure event stream
 src/modules/auth/        email credential, login, session issue/verification/revocation event stream
 src/modules/authorization/ actor role grant, revoke, and permission decision event stream
+src/modules/audit-log/   actor action/resource/result immutable audit record event stream
 src/modules/address-book/ customer address add, update, default selection, and disable event stream
 src/modules/inventory/   SKU movement ledger with reservation, release, commit, expiration projections
 src/modules/payment/     payment lifecycle event stream behind a Toss Payments adapter
@@ -310,6 +315,10 @@ curl -X POST http://localhost:3000/authorization/check \
 curl -X POST http://localhost:3000/authorization/role-grants/grant-1/revoke \
   -H 'content-type: application/json' \
   -d '{"revokedByActorId":"admin-1","revokeReason":"team changed"}'
+
+curl -X POST http://localhost:3000/audit-log/records \
+  -H 'content-type: application/json' \
+  -d '{"idempotencyKey":"audit-1","actorId":"agent-1","action":"support-ticket.assign","resourceType":"SUPPORT_TICKET","resourceId":"ticket-1","result":"SUCCESS","reason":"assigned to support queue","requestId":"request-1","metadata":{"ticketId":"ticket-1","assigneeId":"agent-1"},"occurredAt":"2026-01-01T00:00:00.000Z"}'
 
 curl -X POST http://localhost:3000/address-book/addresses \
   -H 'content-type: application/json' \

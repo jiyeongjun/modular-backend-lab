@@ -357,6 +357,22 @@ export type AuthorizationRoleGrantsTable = {
   updated_at: TimestampColumn;
 };
 
+export type AuditLogRecordsTable = {
+  id: string;
+  idempotency_key: string;
+  actor_id: string;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  result: string;
+  reason: string | null;
+  request_id: string | null;
+  metadata: unknown;
+  occurred_at: TimestampColumn;
+  version: number;
+  created_at: TimestampColumn;
+};
+
 export type KyselyMigrationTable = {
   name: string;
   timestamp: TimestampColumn;
@@ -369,6 +385,7 @@ export type KyselyMigrationLockTable = {
 
 export type Database = {
   address_book_addresses: AddressBookAddressesTable;
+  audit_log_records: AuditLogRecordsTable;
   authorization_role_grants: AuthorizationRoleGrantsTable;
   auth_email_credentials: AuthEmailCredentialsTable;
   auth_sessions: AuthSessionsTable;
@@ -398,6 +415,8 @@ export type OrderUpdate = Updateable<OrdersTable>;
 export type AddressBookAddressRow = Selectable<AddressBookAddressesTable>;
 export type AddressBookAddressInsert = Insertable<AddressBookAddressesTable>;
 export type AddressBookAddressUpdate = Updateable<AddressBookAddressesTable>;
+export type AuditLogRecordRow = Selectable<AuditLogRecordsTable>;
+export type AuditLogRecordInsert = Insertable<AuditLogRecordsTable>;
 export type AuthorizationRoleGrantRow = Selectable<AuthorizationRoleGrantsTable>;
 export type AuthorizationRoleGrantInsert = Insertable<AuthorizationRoleGrantsTable>;
 export type AuthorizationRoleGrantUpdate = Updateable<AuthorizationRoleGrantsTable>;

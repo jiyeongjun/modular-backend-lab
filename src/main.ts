@@ -12,6 +12,8 @@ import {
   createUpdateAddressUseCase,
 } from "./modules/address-book/application/index.js";
 import { createKyselyAddressBookUnitOfWork } from "./modules/address-book/infra/index.js";
+import { createAppendAuditRecordUseCase } from "./modules/audit-log/application/index.js";
+import { createKyselyAuditLogUnitOfWork } from "./modules/audit-log/infra/index.js";
 import {
   createDisableEmailCredentialUseCase,
   createLoginWithEmailUseCase,
@@ -149,6 +151,12 @@ const setDefaultAddressUseCase = createSetDefaultAddressUseCase({
 const disableAddressUseCase = createDisableAddressUseCase({
   uow: addressBookUow,
   now: () => new Date(),
+});
+const auditLogUow = createKyselyAuditLogUnitOfWork(db);
+const appendAuditRecordUseCase = createAppendAuditRecordUseCase({
+  uow: auditLogUow,
+  now: () => new Date(),
+  generateId: () => uuidGenerator.generate(),
 });
 const authorizationUow = createKyselyAuthorizationUnitOfWork(db);
 const grantAuthorizationRoleUseCase = createGrantAuthorizationRoleUseCase({
@@ -413,6 +421,7 @@ const app = createApp({
   updateAddressUseCase,
   setDefaultAddressUseCase,
   disableAddressUseCase,
+  appendAuditRecordUseCase,
   grantAuthorizationRoleUseCase,
   revokeAuthorizationRoleUseCase,
   checkAuthorizationUseCase,

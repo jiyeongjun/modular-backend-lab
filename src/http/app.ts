@@ -8,6 +8,8 @@ import type {
   UpdateAddressUseCase,
 } from "../modules/address-book/application/index.js";
 import { createAddressBookRoutes } from "../modules/address-book/http/index.js";
+import type { AppendAuditRecordUseCase } from "../modules/audit-log/application/index.js";
+import { createAuditLogRoutes } from "../modules/audit-log/http/index.js";
 import type {
   DisableEmailCredentialUseCase,
   LoginWithEmailUseCase,
@@ -106,6 +108,7 @@ export function createApp(deps: {
   updateAddressUseCase: UpdateAddressUseCase;
   setDefaultAddressUseCase: SetDefaultAddressUseCase;
   disableAddressUseCase: DisableAddressUseCase;
+  appendAuditRecordUseCase: AppendAuditRecordUseCase;
   grantAuthorizationRoleUseCase: GrantAuthorizationRoleUseCase;
   revokeAuthorizationRoleUseCase: RevokeAuthorizationRoleUseCase;
   checkAuthorizationUseCase: CheckAuthorizationUseCase;
@@ -168,6 +171,12 @@ export function createApp(deps: {
       updateAddressUseCase: deps.updateAddressUseCase,
       setDefaultAddressUseCase: deps.setDefaultAddressUseCase,
       disableAddressUseCase: deps.disableAddressUseCase,
+    }),
+  );
+  app.route(
+    "/",
+    createAuditLogRoutes({
+      appendAuditRecordUseCase: deps.appendAuditRecordUseCase,
     }),
   );
   app.route(
