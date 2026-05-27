@@ -12,9 +12,9 @@ No active contract.
 - Use `domain_events` as the append-only source-of-truth ledger for stateful business aggregates.
 - Keep current state tables as projections/read models for HTTP responses, idempotency lookup, and batch scans.
 - Keep `outbox_events` separate as the integration publishing queue; it must not become the event store.
-- Apply the ledger pattern to `customer`, `auth`, `address-book`, `order`, `payment`, `inventory`,
-  `fulfillment`, `refund`, `settlement`, `promotion`, `returns`, `notification`, and
-  `support-ticket`.
+- Apply the ledger pattern to `customer`, `auth`, `authorization`, `address-book`, `order`,
+  `payment`, `inventory`, `fulfillment`, `refund`, `settlement`, `promotion`, `returns`,
+  `notification`, and `support-ticket`.
 - Leave `checkout` as orchestration because it has no persisted aggregate of its own.
 - Add `returns` as the module that owns return request, RMA authorization, receipt, and inspection
   before any refund/restock orchestration consumes those facts.
@@ -28,3 +28,5 @@ No active contract.
   snapshots later rather than owning reusable customer addresses.
 - Add `support-ticket` as the customer support workflow module for inquiry intake, assignment,
   resolution, and closure without coupling it directly to order/refund/returns internals.
+- Add `authorization` as the role grant and permission decision module; identity and credential
+  lifecycle remain in `customer` and `auth`.

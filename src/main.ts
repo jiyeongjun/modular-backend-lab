@@ -24,6 +24,12 @@ import {
   createLocalAuthTokenService,
   createPbkdf2PasswordHasher,
 } from "./modules/auth/infra/index.js";
+import {
+  createCheckAuthorizationUseCase,
+  createGrantAuthorizationRoleUseCase,
+  createRevokeAuthorizationRoleUseCase,
+} from "./modules/authorization/application/index.js";
+import { createKyselyAuthorizationUnitOfWork } from "./modules/authorization/infra/index.js";
 import { createSubmitCheckoutUseCase } from "./modules/checkout/application/index.js";
 import {
   createCheckoutInventoryAdapter,
@@ -143,6 +149,19 @@ const setDefaultAddressUseCase = createSetDefaultAddressUseCase({
 const disableAddressUseCase = createDisableAddressUseCase({
   uow: addressBookUow,
   now: () => new Date(),
+});
+const authorizationUow = createKyselyAuthorizationUnitOfWork(db);
+const grantAuthorizationRoleUseCase = createGrantAuthorizationRoleUseCase({
+  uow: authorizationUow,
+  now: () => new Date(),
+  generateId: () => uuidGenerator.generate(),
+});
+const revokeAuthorizationRoleUseCase = createRevokeAuthorizationRoleUseCase({
+  uow: authorizationUow,
+  now: () => new Date(),
+});
+const checkAuthorizationUseCase = createCheckAuthorizationUseCase({
+  uow: authorizationUow,
 });
 const authUow = createKyselyAuthUnitOfWork(db);
 const passwordHasher = createPbkdf2PasswordHasher();
@@ -394,6 +413,9 @@ const app = createApp({
   updateAddressUseCase,
   setDefaultAddressUseCase,
   disableAddressUseCase,
+  grantAuthorizationRoleUseCase,
+  revokeAuthorizationRoleUseCase,
+  checkAuthorizationUseCase,
   registerEmailCredentialUseCase,
   loginWithEmailUseCase,
   verifyAuthSessionUseCase,

@@ -21,6 +21,12 @@ export function createRouteTestApp(overrides: RouteTestAppOverrides = {}) {
     setDefaultAddressUseCase:
       overrides.setDefaultAddressUseCase ?? unexpectedUseCase("address-book"),
     disableAddressUseCase: overrides.disableAddressUseCase ?? unexpectedUseCase("address-book"),
+    grantAuthorizationRoleUseCase:
+      overrides.grantAuthorizationRoleUseCase ?? unexpectedUseCase("authorization"),
+    revokeAuthorizationRoleUseCase:
+      overrides.revokeAuthorizationRoleUseCase ?? unexpectedUseCase("authorization"),
+    checkAuthorizationUseCase:
+      overrides.checkAuthorizationUseCase ?? unexpectedUseCase("authorization"),
     registerEmailCredentialUseCase:
       overrides.registerEmailCredentialUseCase ?? unexpectedUseCase("auth"),
     loginWithEmailUseCase: overrides.loginWithEmailUseCase ?? unexpectedUseCase("auth"),

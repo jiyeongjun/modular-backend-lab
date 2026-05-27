@@ -340,6 +340,23 @@ export type SupportTicketsTable = {
   updated_at: TimestampColumn;
 };
 
+export type AuthorizationRoleGrantsTable = {
+  id: string;
+  actor_id: string;
+  role: string;
+  idempotency_key: string;
+  status: string;
+  granted_by_actor_id: string;
+  grant_reason: string | null;
+  revoked_by_actor_id: string | null;
+  revoke_reason: string | null;
+  granted_at: TimestampColumn;
+  revoked_at: TimestampColumn | null;
+  version: number;
+  created_at: TimestampColumn;
+  updated_at: TimestampColumn;
+};
+
 export type KyselyMigrationTable = {
   name: string;
   timestamp: TimestampColumn;
@@ -352,6 +369,7 @@ export type KyselyMigrationLockTable = {
 
 export type Database = {
   address_book_addresses: AddressBookAddressesTable;
+  authorization_role_grants: AuthorizationRoleGrantsTable;
   auth_email_credentials: AuthEmailCredentialsTable;
   auth_sessions: AuthSessionsTable;
   coupon_redemptions: CouponRedemptionsTable;
@@ -380,6 +398,9 @@ export type OrderUpdate = Updateable<OrdersTable>;
 export type AddressBookAddressRow = Selectable<AddressBookAddressesTable>;
 export type AddressBookAddressInsert = Insertable<AddressBookAddressesTable>;
 export type AddressBookAddressUpdate = Updateable<AddressBookAddressesTable>;
+export type AuthorizationRoleGrantRow = Selectable<AuthorizationRoleGrantsTable>;
+export type AuthorizationRoleGrantInsert = Insertable<AuthorizationRoleGrantsTable>;
+export type AuthorizationRoleGrantUpdate = Updateable<AuthorizationRoleGrantsTable>;
 export type AuthEmailCredentialRow = Selectable<AuthEmailCredentialsTable>;
 export type AuthEmailCredentialInsert = Insertable<AuthEmailCredentialsTable>;
 export type AuthEmailCredentialUpdate = Updateable<AuthEmailCredentialsTable>;

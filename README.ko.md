@@ -22,6 +22,7 @@ Infrastructure adapters
 
 - Hono = HTTP delivery adapter
 - Auth = customerId에 붙는 credential/session module
+- Authorization = actor role grant와 permission decision module
 - Address-book = customerId에 붙는 reusable address module
 - Support-ticket = 고객 문의 접수, 배정, 해결, 종료 workflow module
 - Kysely = persistence adapter
@@ -67,8 +68,8 @@ Domain 계층은 객체 상속 구조보다 순수 함수, 불변 상태 전이,
   UnitOfWork transaction 안에서 함께 처리합니다.
 - 현재 상태 테이블은 조회와 idempotency를 위한 projection이며, `outbox_events`는 외부 발행을 위한
   queue입니다.
-- `customer`, `auth`, `address-book`, `order`, `payment`, `inventory`, `fulfillment`, `refund`,
-  `settlement`, `promotion`, `returns`, `notification`, `support-ticket` 모듈은
+- `customer`, `auth`, `authorization`, `address-book`, `order`, `payment`, `inventory`,
+  `fulfillment`, `refund`, `settlement`, `promotion`, `returns`, `notification`, `support-ticket` 모듈은
   append-only domain event stream을 기준으로 상태 변경 근거를 남깁니다.
 
 ### 성능을 의식한 경계
@@ -118,12 +119,13 @@ metrics, traces를 직접 수행하지 않습니다.
 
 ## Event Sourcing과 projection
 
-고객 lifecycle, 인증 세션, 주소록, 주문, 결제, 재고, 배송, 환불, 정산, 쿠폰, 반품, 고객 문의처럼
-식별자, 돈, 재고, 운영 근거와 연결되는 흐름은 append-only `domain_events`를 상태 변경의 원장으로 둡니다.
-`customers`, `auth_email_credentials`, `auth_sessions`, `address_book_addresses`, `orders`,
-`payments`, `inventory_items`, `fulfillments`, `refunds`, `settlements`, `coupons`,
-`coupon_redemptions`, `return_requests`, `support_tickets` 같은 현재 상태 테이블은 API 응답,
-idempotency lookup, batch scan을 위한 projection입니다.
+고객 lifecycle, 인증 세션, 권한 부여, 주소록, 주문, 결제, 재고, 배송, 환불, 정산, 쿠폰, 반품,
+고객 문의처럼 식별자, 돈, 재고, 운영 근거와 연결되는 흐름은 append-only `domain_events`를 상태
+변경의 원장으로 둡니다. `customers`, `auth_email_credentials`, `auth_sessions`,
+`authorization_role_grants`, `address_book_addresses`, `orders`, `payments`, `inventory_items`,
+`fulfillments`, `refunds`, `settlements`, `coupons`, `coupon_redemptions`, `return_requests`,
+`support_tickets` 같은 현재 상태 테이블은 API 응답, idempotency lookup, batch scan을 위한
+projection입니다.
 
 `outbox_events`는 event store가 아닙니다. `domain_events`는 aggregate 상태와 감사/회계 근거를 위한
 원장이고, `outbox_events`는 외부 시스템 발행 실패와 재시도를 다루는 integration queue입니다. 상태
@@ -152,6 +154,9 @@ ERP나 회계 기능은 이 레포 안에 직접 넣지 않습니다. `settlemen
 - 이메일/비밀번호 로그인이 필요하면 `auth`가 credential, password hash, session token lifecycle을
   소유합니다. 비밀번호 hash와 token 생성은 port 뒤에 두고, raw password나 raw token은 저장하지
   않습니다.
+- 역할과 권한 판단이 필요하면 `authorization`이 actor별 role grant와 permission decision을 소유합니다.
+  `auth`는 세션과 credential을, `authorization`은 "이 actor가 이 action을 수행할 수 있는가"를
+  분리해서 다룹니다.
 - 재사용 가능한 고객 주소가 필요하면 `address-book`이 주소 원본과 기본 주소 지정을 소유합니다.
   `fulfillment`는 배송 실행 시점의 snapshot address를 보관하고, address-book 자체를 직접 소유하지
   않습니다.
@@ -186,6 +191,7 @@ ai/skills       operational playbooks for future AI agents
 src/modules/order/       주문 lifecycle event stream과 결제 상태 projection
 src/modules/customer/    고객 등록, 정지, 재활성화, 종료 lifecycle event stream
 src/modules/auth/        이메일 credential, login, session 발급/검증/폐기 event stream
+src/modules/authorization/ actor role grant, revoke, permission decision event stream
 src/modules/address-book/ 고객 주소 등록, 수정, 기본 주소 지정, 비활성화 event stream
 src/modules/inventory/   SKU별 재고 이동 ledger, 예약, 해제, 확정, 만료 projection
 src/modules/payment/     Toss Payments adapter 뒤의 결제 lifecycle event stream
@@ -290,6 +296,18 @@ curl -X POST http://localhost:3000/auth/sessions/verify \
 curl -X POST http://localhost:3000/auth/sessions/revoke \
   -H 'content-type: application/json' \
   -d '{"token":"session-token"}'
+
+curl -X POST http://localhost:3000/authorization/role-grants \
+  -H 'content-type: application/json' \
+  -d '{"actorId":"agent-1","role":"SUPPORT_AGENT","idempotencyKey":"grant-role-1","grantedByActorId":"admin-1","grantReason":"support team member"}'
+
+curl -X POST http://localhost:3000/authorization/check \
+  -H 'content-type: application/json' \
+  -d '{"actorId":"agent-1","permission":"support-ticket:assign","resource":{"type":"SUPPORT_TICKET","id":"ticket-1"}}'
+
+curl -X POST http://localhost:3000/authorization/role-grants/grant-1/revoke \
+  -H 'content-type: application/json' \
+  -d '{"revokedByActorId":"admin-1","revokeReason":"team changed"}'
 
 curl -X POST http://localhost:3000/address-book/addresses \
   -H 'content-type: application/json' \

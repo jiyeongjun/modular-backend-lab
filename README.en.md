@@ -22,6 +22,7 @@ Infrastructure adapters
 
 - Hono = HTTP delivery adapter
 - Auth = credential/session module attached to customerId
+- Authorization = actor role grant and permission decision module
 - Address-book = reusable address module attached to customerId
 - Support-ticket = customer inquiry intake, assignment, resolution, and closure workflow module
 - Kysely = persistence adapter
@@ -68,9 +69,9 @@ functional library, boundaries and state are modeled with standard TypeScript.
   explicit UnitOfWork transactions.
 - Current tables are projections for reads and idempotency, while `outbox_events` is the integration
   publishing queue.
-- Customer, auth, address-book, order, payment, inventory, fulfillment, refund, settlement,
-  promotion, returns, notification, and support-ticket keep append-only domain event streams as the
-  basis for state changes.
+- Customer, auth, authorization, address-book, order, payment, inventory, fulfillment, refund,
+  settlement, promotion, returns, notification, and support-ticket keep append-only domain event
+  streams as the basis for state changes.
 
 ### Performance-Conscious Design
 
@@ -117,12 +118,13 @@ emit metrics, or start traces directly.
 
 ## Event Sourcing And Projections
 
-Flows tied to customer lifecycle, auth sessions, address books, money, stock, settlement readiness,
-coupon policy, returns, support operations, or delivery state use append-only `domain_events` as the
-business ledger. Current tables such as `customers`, `auth_email_credentials`, `auth_sessions`,
-`address_book_addresses`, `orders`, `payments`, `inventory_items`, `fulfillments`, `refunds`,
-`settlements`, `coupons`, `coupon_redemptions`, `return_requests`, and `support_tickets` are
-projections for API responses, idempotency lookups, and batch scans.
+Flows tied to customer lifecycle, auth sessions, role grants, address books, money, stock,
+settlement readiness, coupon policy, returns, support operations, or delivery state use append-only
+`domain_events` as the business ledger. Current tables such as `customers`,
+`auth_email_credentials`, `auth_sessions`, `authorization_role_grants`, `address_book_addresses`,
+`orders`, `payments`, `inventory_items`, `fulfillments`, `refunds`, `settlements`, `coupons`,
+`coupon_redemptions`, `return_requests`, and `support_tickets` are projections for API responses,
+idempotency lookups, and batch scans.
 
 `outbox_events` is not the event store. `domain_events` records aggregate state and audit/accounting
 evidence; `outbox_events` handles integration publishing, retry, and delivery failure isolation.
@@ -153,6 +155,9 @@ spreading the change across unrelated flows.
 - Email/password login belongs in `auth`, which owns credential, password hash, and session token
   lifecycle. Password hashing and token generation stay behind ports, and raw passwords or raw
   tokens are not stored.
+- Roles and permission decisions belong in `authorization`, which owns actor role grants and answers
+  whether an actor may perform an action. `auth` owns sessions and credentials; `authorization` owns
+  permission decisions.
 - Reusable customer addresses belong in `address-book`, which owns address source data and default
   address selection. `fulfillment` keeps shipment-time address snapshots instead of owning reusable
   customer addresses.
@@ -189,6 +194,7 @@ Current business modules:
 src/modules/order/       order lifecycle event stream and payment-state projection
 src/modules/customer/    customer registration, suspension, reactivation, and closure event stream
 src/modules/auth/        email credential, login, session issue/verification/revocation event stream
+src/modules/authorization/ actor role grant, revoke, and permission decision event stream
 src/modules/address-book/ customer address add, update, default selection, and disable event stream
 src/modules/inventory/   SKU movement ledger with reservation, release, commit, expiration projections
 src/modules/payment/     payment lifecycle event stream behind a Toss Payments adapter
@@ -292,6 +298,18 @@ curl -X POST http://localhost:3000/auth/sessions/verify \
 curl -X POST http://localhost:3000/auth/sessions/revoke \
   -H 'content-type: application/json' \
   -d '{"token":"session-token"}'
+
+curl -X POST http://localhost:3000/authorization/role-grants \
+  -H 'content-type: application/json' \
+  -d '{"actorId":"agent-1","role":"SUPPORT_AGENT","idempotencyKey":"grant-role-1","grantedByActorId":"admin-1","grantReason":"support team member"}'
+
+curl -X POST http://localhost:3000/authorization/check \
+  -H 'content-type: application/json' \
+  -d '{"actorId":"agent-1","permission":"support-ticket:assign","resource":{"type":"SUPPORT_TICKET","id":"ticket-1"}}'
+
+curl -X POST http://localhost:3000/authorization/role-grants/grant-1/revoke \
+  -H 'content-type: application/json' \
+  -d '{"revokedByActorId":"admin-1","revokeReason":"team changed"}'
 
 curl -X POST http://localhost:3000/address-book/addresses \
   -H 'content-type: application/json' \

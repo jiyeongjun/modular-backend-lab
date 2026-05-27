@@ -16,6 +16,12 @@ import type {
   VerifyAuthSessionUseCase,
 } from "../modules/auth/application/index.js";
 import { createAuthRoutes } from "../modules/auth/http/index.js";
+import type {
+  CheckAuthorizationUseCase,
+  GrantAuthorizationRoleUseCase,
+  RevokeAuthorizationRoleUseCase,
+} from "../modules/authorization/application/index.js";
+import { createAuthorizationRoutes } from "../modules/authorization/http/index.js";
 import type { SubmitCheckoutUseCase } from "../modules/checkout/application/index.js";
 import { createCheckoutRoutes } from "../modules/checkout/http/index.js";
 import type {
@@ -100,6 +106,9 @@ export function createApp(deps: {
   updateAddressUseCase: UpdateAddressUseCase;
   setDefaultAddressUseCase: SetDefaultAddressUseCase;
   disableAddressUseCase: DisableAddressUseCase;
+  grantAuthorizationRoleUseCase: GrantAuthorizationRoleUseCase;
+  revokeAuthorizationRoleUseCase: RevokeAuthorizationRoleUseCase;
+  checkAuthorizationUseCase: CheckAuthorizationUseCase;
   registerEmailCredentialUseCase: RegisterEmailCredentialUseCase;
   loginWithEmailUseCase: LoginWithEmailUseCase;
   verifyAuthSessionUseCase: VerifyAuthSessionUseCase;
@@ -159,6 +168,14 @@ export function createApp(deps: {
       updateAddressUseCase: deps.updateAddressUseCase,
       setDefaultAddressUseCase: deps.setDefaultAddressUseCase,
       disableAddressUseCase: deps.disableAddressUseCase,
+    }),
+  );
+  app.route(
+    "/",
+    createAuthorizationRoutes({
+      grantAuthorizationRoleUseCase: deps.grantAuthorizationRoleUseCase,
+      revokeAuthorizationRoleUseCase: deps.revokeAuthorizationRoleUseCase,
+      checkAuthorizationUseCase: deps.checkAuthorizationUseCase,
     }),
   );
   app.route(
