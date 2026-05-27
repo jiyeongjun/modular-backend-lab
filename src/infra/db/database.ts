@@ -316,6 +316,30 @@ export type NotificationRequestsTable = {
   updated_at: TimestampColumn;
 };
 
+export type SupportTicketsTable = {
+  id: string;
+  customer_id: string;
+  idempotency_key: string;
+  category: string;
+  priority: string;
+  subject: string;
+  description: string;
+  order_id: string | null;
+  return_id: string | null;
+  refund_id: string | null;
+  status: string;
+  assignee_id: string | null;
+  resolution: string | null;
+  opened_at: TimestampColumn;
+  assigned_at: TimestampColumn | null;
+  waiting_at: TimestampColumn | null;
+  resolved_at: TimestampColumn | null;
+  closed_at: TimestampColumn | null;
+  version: number;
+  created_at: TimestampColumn;
+  updated_at: TimestampColumn;
+};
+
 export type KyselyMigrationTable = {
   name: string;
   timestamp: TimestampColumn;
@@ -345,6 +369,7 @@ export type Database = {
   refunds: RefundsTable;
   return_requests: ReturnRequestsTable;
   settlements: SettlementsTable;
+  support_tickets: SupportTicketsTable;
   kysely_migration: KyselyMigrationTable;
   kysely_migration_lock: KyselyMigrationLockTable;
 };
@@ -400,3 +425,6 @@ export type ReturnRequestUpdate = Updateable<ReturnRequestsTable>;
 export type NotificationRequestRow = Selectable<NotificationRequestsTable>;
 export type NotificationRequestInsert = Insertable<NotificationRequestsTable>;
 export type NotificationRequestUpdate = Updateable<NotificationRequestsTable>;
+export type SupportTicketRow = Selectable<SupportTicketsTable>;
+export type SupportTicketInsert = Insertable<SupportTicketsTable>;
+export type SupportTicketUpdate = Updateable<SupportTicketsTable>;

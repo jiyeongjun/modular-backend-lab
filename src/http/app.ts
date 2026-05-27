@@ -77,6 +77,14 @@ import type {
   SyncSettlementUseCase,
 } from "../modules/settlement/application/index.js";
 import { createSettlementRoutes } from "../modules/settlement/http/index.js";
+import type {
+  AssignSupportTicketUseCase,
+  CloseSupportTicketUseCase,
+  CreateSupportTicketUseCase,
+  MarkSupportTicketWaitingUseCase,
+  ResolveSupportTicketUseCase,
+} from "../modules/support-ticket/application/index.js";
+import { createSupportTicketRoutes } from "../modules/support-ticket/http/index.js";
 import type { AppBindings } from "./context.js";
 import { createErrorHandler } from "./middleware/error-handler.js";
 import { requestLoggerMiddleware } from "./middleware/logger.js";
@@ -129,6 +137,11 @@ export function createApp(deps: {
   releaseCouponRedemptionUseCase: ReleaseCouponRedemptionUseCase;
   syncSettlementUseCase: SyncSettlementUseCase;
   getSettlementUseCase: GetSettlementUseCase;
+  createSupportTicketUseCase: CreateSupportTicketUseCase;
+  assignSupportTicketUseCase: AssignSupportTicketUseCase;
+  markSupportTicketWaitingUseCase: MarkSupportTicketWaitingUseCase;
+  resolveSupportTicketUseCase: ResolveSupportTicketUseCase;
+  closeSupportTicketUseCase: CloseSupportTicketUseCase;
 }): Hono<AppBindings> {
   const app = new Hono<AppBindings>();
 
@@ -233,6 +246,16 @@ export function createApp(deps: {
     createSettlementRoutes({
       syncSettlementUseCase: deps.syncSettlementUseCase,
       getSettlementUseCase: deps.getSettlementUseCase,
+    }),
+  );
+  app.route(
+    "/",
+    createSupportTicketRoutes({
+      createSupportTicketUseCase: deps.createSupportTicketUseCase,
+      assignSupportTicketUseCase: deps.assignSupportTicketUseCase,
+      markSupportTicketWaitingUseCase: deps.markSupportTicketWaitingUseCase,
+      resolveSupportTicketUseCase: deps.resolveSupportTicketUseCase,
+      closeSupportTicketUseCase: deps.closeSupportTicketUseCase,
     }),
   );
 

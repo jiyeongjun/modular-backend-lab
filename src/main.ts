@@ -112,6 +112,14 @@ import {
   createKyselySettlementSourceReader,
   createKyselySettlementUnitOfWork,
 } from "./modules/settlement/infra/index.js";
+import {
+  createAssignSupportTicketUseCase,
+  createCloseSupportTicketUseCase,
+  createCreateSupportTicketUseCase,
+  createMarkSupportTicketWaitingUseCase,
+  createResolveSupportTicketUseCase,
+} from "./modules/support-ticket/application/index.js";
+import { createKyselySupportTicketUnitOfWork } from "./modules/support-ticket/infra/index.js";
 import { uuidGenerator } from "./shared/id/index.js";
 
 const config = loadConfig();
@@ -357,6 +365,28 @@ const syncSettlementUseCase = createSyncSettlementUseCase({
 const getSettlementUseCase = createGetSettlementUseCase({
   uow: settlementUow,
 });
+const supportTicketUow = createKyselySupportTicketUnitOfWork(db);
+const createSupportTicketUseCase = createCreateSupportTicketUseCase({
+  uow: supportTicketUow,
+  now: () => new Date(),
+  generateId: () => uuidGenerator.generate(),
+});
+const assignSupportTicketUseCase = createAssignSupportTicketUseCase({
+  uow: supportTicketUow,
+  now: () => new Date(),
+});
+const markSupportTicketWaitingUseCase = createMarkSupportTicketWaitingUseCase({
+  uow: supportTicketUow,
+  now: () => new Date(),
+});
+const resolveSupportTicketUseCase = createResolveSupportTicketUseCase({
+  uow: supportTicketUow,
+  now: () => new Date(),
+});
+const closeSupportTicketUseCase = createCloseSupportTicketUseCase({
+  uow: supportTicketUow,
+  now: () => new Date(),
+});
 const app = createApp({
   logger,
   metrics: createMetricsRegistry(),
@@ -401,6 +431,11 @@ const app = createApp({
   releaseCouponRedemptionUseCase,
   syncSettlementUseCase,
   getSettlementUseCase,
+  createSupportTicketUseCase,
+  assignSupportTicketUseCase,
+  markSupportTicketWaitingUseCase,
+  resolveSupportTicketUseCase,
+  closeSupportTicketUseCase,
 });
 
 const server = serve(

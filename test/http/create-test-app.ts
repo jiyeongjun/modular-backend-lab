@@ -70,5 +70,15 @@ export function createRouteTestApp(overrides: RouteTestAppOverrides = {}) {
       overrides.releaseCouponRedemptionUseCase ?? unexpectedUseCase("promotion"),
     syncSettlementUseCase: overrides.syncSettlementUseCase ?? unexpectedUseCase("settlement"),
     getSettlementUseCase: overrides.getSettlementUseCase ?? unexpectedUseCase("settlement"),
+    createSupportTicketUseCase:
+      overrides.createSupportTicketUseCase ?? unexpectedUseCase("support-ticket"),
+    assignSupportTicketUseCase:
+      overrides.assignSupportTicketUseCase ?? unexpectedUseCase("support-ticket"),
+    markSupportTicketWaitingUseCase:
+      overrides.markSupportTicketWaitingUseCase ?? unexpectedUseCase("support-ticket"),
+    resolveSupportTicketUseCase:
+      overrides.resolveSupportTicketUseCase ?? unexpectedUseCase("support-ticket"),
+    closeSupportTicketUseCase:
+      overrides.closeSupportTicketUseCase ?? unexpectedUseCase("support-ticket"),
   });
 }

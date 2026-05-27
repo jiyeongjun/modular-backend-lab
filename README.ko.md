@@ -23,6 +23,7 @@ Infrastructure adapters
 - Hono = HTTP delivery adapter
 - Auth = customerId에 붙는 credential/session module
 - Address-book = customerId에 붙는 reusable address module
+- Support-ticket = 고객 문의 접수, 배정, 해결, 종료 workflow module
 - Kysely = persistence adapter
 - Scheduler/Worker = delivery/runtime adapter
 - BullMQ/SQS = queue adapter
@@ -67,7 +68,7 @@ Domain 계층은 객체 상속 구조보다 순수 함수, 불변 상태 전이,
 - 현재 상태 테이블은 조회와 idempotency를 위한 projection이며, `outbox_events`는 외부 발행을 위한
   queue입니다.
 - `customer`, `auth`, `address-book`, `order`, `payment`, `inventory`, `fulfillment`, `refund`,
-  `settlement`, `promotion`, `returns`, `notification` 모듈은
+  `settlement`, `promotion`, `returns`, `notification`, `support-ticket` 모듈은
   append-only domain event stream을 기준으로 상태 변경 근거를 남깁니다.
 
 ### 성능을 의식한 경계
@@ -117,12 +118,12 @@ metrics, traces를 직접 수행하지 않습니다.
 
 ## Event Sourcing과 projection
 
-고객 lifecycle, 인증 세션, 주소록, 주문, 결제, 재고, 배송, 환불, 정산, 쿠폰, 반품처럼 식별자, 돈,
-재고, 운영 근거와 연결되는 흐름은 append-only `domain_events`를 상태 변경의 원장으로 둡니다.
+고객 lifecycle, 인증 세션, 주소록, 주문, 결제, 재고, 배송, 환불, 정산, 쿠폰, 반품, 고객 문의처럼
+식별자, 돈, 재고, 운영 근거와 연결되는 흐름은 append-only `domain_events`를 상태 변경의 원장으로 둡니다.
 `customers`, `auth_email_credentials`, `auth_sessions`, `address_book_addresses`, `orders`,
 `payments`, `inventory_items`, `fulfillments`, `refunds`, `settlements`, `coupons`,
-`coupon_redemptions`, `return_requests` 같은 현재 상태 테이블은 API 응답, idempotency lookup, batch
-scan을 위한 projection입니다.
+`coupon_redemptions`, `return_requests`, `support_tickets` 같은 현재 상태 테이블은 API 응답,
+idempotency lookup, batch scan을 위한 projection입니다.
 
 `outbox_events`는 event store가 아닙니다. `domain_events`는 aggregate 상태와 감사/회계 근거를 위한
 원장이고, `outbox_events`는 외부 시스템 발행 실패와 재시도를 다루는 integration queue입니다. 상태
@@ -158,6 +159,9 @@ ERP나 회계 기능은 이 레포 안에 직접 넣지 않습니다. `settlemen
   들어오지 않고, 내부 event와 command를 외부 API에 맞게 변환하는 adapter로 둡니다.
 - 알림이 필요하면 `notification`의 요청, 발송, 실패, 재시도 상태를 사용합니다. 실제 이메일/SMS/Slack
   provider는 sender port 뒤에 두고, 발송 결과만 projection과 event로 기록합니다.
+- 고객 문의와 운영 처리가 필요하면 `support-ticket`이 접수, 담당자 배정, 고객 응답 대기, 해결, 종료
+  lifecycle을 소유합니다. 주문, 반품, 환불은 참조 ID로만 연결하고 각 모듈 내부 구현을 직접 가져오지
+  않습니다.
 - 운영 화면이나 리포트가 필요하면 projection/read model을 추가합니다. 조회 요구 때문에 domain
   model을 바꾸지 않고, `domain_events`나 current table을 기준으로 필요한 읽기 모델을 구성합니다.
 - 새로운 도메인이 생기면 독립 모듈로 붙입니다. loyalty, coupon, settlement 같은 기능은 같은 layer
@@ -192,6 +196,7 @@ src/modules/settlement/  결제, 환불, 배송 이벤트에서 만든 주문별
 src/modules/promotion/   쿠폰 할인 정책, quote, 예약, 확정, 해제 event stream
 src/modules/returns/     반품 요청, RMA 발급, 입고, 검수 event stream
 src/modules/notification/ 알림 요청, 발송 성공/실패, 재시도 추적 event stream
+src/modules/support-ticket/ 고객 문의 접수, 배정, 해결, 종료 event stream
 ```
 
 각 모듈은 같은 layer shape를 따릅니다.
@@ -337,6 +342,22 @@ curl -X POST http://localhost:3000/notifications \
   -d '{"idempotencyKey":"notify-1","channel":"EMAIL","recipient":"customer@example.com","templateKey":"return.authorized","payload":{"orderId":"order-1","rmaNumber":"RMA-1"}}'
 
 curl -X POST http://localhost:3000/notifications/notification-1/send
+
+curl -X POST http://localhost:3000/support/tickets \
+  -H 'content-type: application/json' \
+  -d '{"customerId":"customer-1","idempotencyKey":"ticket-1","category":"ORDER","priority":"NORMAL","subject":"Order address change","description":"Customer wants to change the shipping address","orderId":"order-1"}'
+
+curl -X POST http://localhost:3000/support/tickets/ticket-1/assign \
+  -H 'content-type: application/json' \
+  -d '{"assigneeId":"agent-1"}'
+
+curl -X POST http://localhost:3000/support/tickets/ticket-1/waiting-customer
+
+curl -X POST http://localhost:3000/support/tickets/ticket-1/resolve \
+  -H 'content-type: application/json' \
+  -d '{"resolution":"Customer confirmed the new address"}'
+
+curl -X POST http://localhost:3000/support/tickets/ticket-1/close
 
 curl -X POST http://localhost:3000/promotions/coupons \
   -H 'content-type: application/json' \

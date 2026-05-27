@@ -23,6 +23,7 @@ Infrastructure adapters
 - Hono = HTTP delivery adapter
 - Auth = credential/session module attached to customerId
 - Address-book = reusable address module attached to customerId
+- Support-ticket = customer inquiry intake, assignment, resolution, and closure workflow module
 - Kysely = persistence adapter
 - Scheduler/Worker = delivery/runtime adapter
 - BullMQ/SQS = queue adapter
@@ -68,8 +69,8 @@ functional library, boundaries and state are modeled with standard TypeScript.
 - Current tables are projections for reads and idempotency, while `outbox_events` is the integration
   publishing queue.
 - Customer, auth, address-book, order, payment, inventory, fulfillment, refund, settlement,
-  promotion, returns, and notification keep append-only domain event streams as the basis for state
-  changes.
+  promotion, returns, notification, and support-ticket keep append-only domain event streams as the
+  basis for state changes.
 
 ### Performance-Conscious Design
 
@@ -117,11 +118,11 @@ emit metrics, or start traces directly.
 ## Event Sourcing And Projections
 
 Flows tied to customer lifecycle, auth sessions, address books, money, stock, settlement readiness,
-coupon policy, returns, or delivery state use append-only `domain_events` as the business ledger.
-Current tables such as `customers`, `auth_email_credentials`, `auth_sessions`,
+coupon policy, returns, support operations, or delivery state use append-only `domain_events` as the
+business ledger. Current tables such as `customers`, `auth_email_credentials`, `auth_sessions`,
 `address_book_addresses`, `orders`, `payments`, `inventory_items`, `fulfillments`, `refunds`,
-`settlements`, `coupons`, `coupon_redemptions`, and `return_requests` are projections for API
-responses, idempotency lookups, and batch scans.
+`settlements`, `coupons`, `coupon_redemptions`, `return_requests`, and `support_tickets` are
+projections for API responses, idempotency lookups, and batch scans.
 
 `outbox_events` is not the event store. `domain_events` records aggregate state and audit/accounting
 evidence; `outbox_events` handles integration publishing, retry, and delivery failure isolation.
@@ -160,6 +161,9 @@ spreading the change across unrelated flows.
   APIs.
 - Notifications use `notification` request, send, failure, and retry state. Real email/SMS/Slack
   providers stay behind a sender port, while send results are recorded as projections and events.
+- Support operations use `support-ticket` for intake, assignment, waiting-for-customer, resolution,
+  and closure. Orders, returns, and refunds are linked by reference IDs rather than by importing
+  their module internals.
 - Operations screens and reports use projections/read models. Query requirements should not bend the
   domain model; they can be built from `domain_events` or current tables.
 - New domains attach as independent modules. Loyalty, coupon, and settlement modules can follow the
@@ -195,6 +199,7 @@ src/modules/settlement/  order-level settlement readiness from payment, refund, 
 src/modules/promotion/   coupon discount policy, quote, reservation, commit, and release event stream
 src/modules/returns/     return request, RMA authorization, receipt, and inspection event stream
 src/modules/notification/ notification request, send success/failure, and retry tracking event stream
+src/modules/support-ticket/ customer support intake, assignment, resolution, and closure event stream
 ```
 
 Each module follows the same layer shape:
@@ -339,6 +344,22 @@ curl -X POST http://localhost:3000/notifications \
   -d '{"idempotencyKey":"notify-1","channel":"EMAIL","recipient":"customer@example.com","templateKey":"return.authorized","payload":{"orderId":"order-1","rmaNumber":"RMA-1"}}'
 
 curl -X POST http://localhost:3000/notifications/notification-1/send
+
+curl -X POST http://localhost:3000/support/tickets \
+  -H 'content-type: application/json' \
+  -d '{"customerId":"customer-1","idempotencyKey":"ticket-1","category":"ORDER","priority":"NORMAL","subject":"Order address change","description":"Customer wants to change the shipping address","orderId":"order-1"}'
+
+curl -X POST http://localhost:3000/support/tickets/ticket-1/assign \
+  -H 'content-type: application/json' \
+  -d '{"assigneeId":"agent-1"}'
+
+curl -X POST http://localhost:3000/support/tickets/ticket-1/waiting-customer
+
+curl -X POST http://localhost:3000/support/tickets/ticket-1/resolve \
+  -H 'content-type: application/json' \
+  -d '{"resolution":"Customer confirmed the new address"}'
+
+curl -X POST http://localhost:3000/support/tickets/ticket-1/close
 
 curl -X POST http://localhost:3000/promotions/coupons \
   -H 'content-type: application/json' \
