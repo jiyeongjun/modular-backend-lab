@@ -308,6 +308,19 @@ manifest는 `deploy/k8s/local/`에 있습니다. `secrets.example.yaml`은 kind 
 담고 있으며 local kustomization에서 바로 적용됩니다. Postgres와 Valkey는 재생성하기 쉬운 disposable
 `emptyDir` volume을 사용합니다.
 
+local baseline manifest에는 운영 배포로 넘어가기 전에 확인할 최소 runtime 기본값을 넣어 둡니다.
+
+- API는 `/readyz` readiness probe와 `/healthz` liveness probe를 사용하고, SIGTERM graceful shutdown에
+  맞춰 30초 termination grace를 둡니다.
+- API, worker, scheduler, migration job은 resource request/limit, non-root 앱 컨테이너 보안 컨텍스트,
+  `RuntimeDefault` seccomp, capability drop, privilege escalation 차단을 명시합니다.
+- worker와 scheduler는 HTTP endpoint가 없는 process runtime입니다. 억지 HTTP probe를 만들지 않고
+  process exit, Kubernetes restart, JSON log, bounded resources, deployment availability로 상태를 봅니다.
+- scheduler와 worker rollout은 local singleton에서 중복 실행을 피하기 위해 `Recreate`를 사용합니다. API는
+  rolling update와 API-only PodDisruptionBudget를 둡니다.
+- HPA는 metrics-server와 부하 기준이 필요하므로 local baseline에는 넣지 않습니다. NetworkPolicy도 kind
+  기본 CNI에서 강제되지 않을 수 있어 manifest 대신 EKS 전환 판단으로 남깁니다.
+
 예시 요청:
 
 ```bash
@@ -507,9 +520,12 @@ EKS로 갈 때도 adapter 경계는 유지합니다.
 - in-cluster Postgres는 `DATABASE_URL`을 통해 RDS로 교체합니다.
 - local BullMQ/Valkey는 기존 queue/event publisher port 뒤의 SQS adapter로 교체합니다.
 - local Kubernetes Secret은 Secrets Manager 또는 별도 secret delivery 방식으로 교체합니다.
+- pod의 AWS 접근은 static credential 대신 IRSA 같은 workload identity로 연결합니다.
 - ingress는 ALB 또는 Kubernetes ingress controller 뒤에 둡니다.
+- HPA는 metrics-server 또는 managed metrics 경로와 SLO/부하 기준을 정한 뒤 추가합니다.
+- NetworkPolicy는 실제 CNI enforcement를 확인한 뒤 namespace, DB, queue, observability 흐름을 제한합니다.
 - OpenTelemetry, Prometheus, Grafana, Loki, Tempo는 domain/application 밖의 runtime/observability
-  concern으로 유지합니다.
+  concern으로 유지하고, 필요하면 managed observability로 대체합니다.
 
 ## 환경 변수
 

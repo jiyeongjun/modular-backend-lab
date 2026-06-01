@@ -310,6 +310,22 @@ The local manifests live in `deploy/k8s/local/`. `secrets.example.yaml` is inten
 and contains non-sensitive defaults for kind. Postgres and Valkey use disposable `emptyDir` volumes
 so the cluster can be recreated cheaply.
 
+The local baseline includes the minimum runtime defaults to check before moving toward an operational
+deployment:
+
+- The API uses `/readyz` for readiness and `/healthz` for liveness, with a 30 second termination
+  grace aligned to the existing SIGTERM graceful shutdown path.
+- API, worker, scheduler, and migration pods declare resource requests/limits, non-root app
+  container security context, `RuntimeDefault` seccomp, dropped capabilities, and blocked privilege
+  escalation.
+- Worker and scheduler are process runtimes without HTTP endpoints. The baseline does not invent
+  HTTP probes; health is observed through process exit, Kubernetes restart, JSON logs, bounded
+  resources, and deployment availability.
+- Scheduler and worker rollouts use `Recreate` in the local singleton baseline to avoid duplicate
+  process execution. The API keeps a rolling update and an API-only PodDisruptionBudget.
+- HPA is documented only because it needs metrics-server and load targets. NetworkPolicy is also
+  documented only because kind's default CNI may not enforce it.
+
 Example request:
 
 ```bash
@@ -509,9 +525,13 @@ For EKS-style deployment, keep the same adapter boundaries:
 - Replace local BullMQ/Valkey with an SQS queue adapter behind the existing queue/event publisher
   ports.
 - Replace local Kubernetes Secrets with Secrets Manager or another secret delivery mechanism.
+- Use workload identity such as IRSA for pod AWS access instead of static credentials.
 - Put ingress behind ALB or another Kubernetes ingress controller.
+- Add HPA only after choosing metrics-server or a managed metrics path plus SLO/load targets.
+- Add NetworkPolicy only after confirming CNI enforcement and the required namespace, database,
+  queue, and observability flows.
 - Keep OpenTelemetry, Prometheus, Grafana, Loki, and Tempo as runtime/observability concerns outside
-  domain and application code.
+  domain and application code, replacing them with managed observability where appropriate.
 
 ## Environment
 

@@ -25,10 +25,17 @@ metadata:
     app.kubernetes.io/part-of: modular-backend-lab
 spec:
   replicas: 1
+  revisionHistoryLimit: 3
+  progressDeadlineSeconds: 120
   selector:
     matchLabels:
       app.kubernetes.io/name: modular-backend-lab
       app.kubernetes.io/component: api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -36,6 +43,14 @@ spec:
         app.kubernetes.io/component: api
         app.kubernetes.io/part-of: modular-backend-lab
     spec:
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: api
           image: modular-backend-lab:local
@@ -54,6 +69,19 @@ spec:
           env:
             - name: OTEL_SERVICE_NAME
               value: modular-backend-lab-api
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           readinessProbe:
             httpGet:
               path: /readyz
@@ -61,6 +89,7 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3
+            failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /healthz
@@ -68,3 +97,19 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 3
+            failureThreshold: 3
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api
+  labels:
+    app.kubernetes.io/name: modular-backend-lab
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: modular-backend-lab
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: modular-backend-lab
+      app.kubernetes.io/component: api

@@ -343,9 +343,13 @@ metadata:
     app.kubernetes.io/part-of: modular-backend-lab
 spec:
   replicas: 1
+  revisionHistoryLimit: 2
+  progressDeadlineSeconds: 120
   selector:
     matchLabels:
       app.kubernetes.io/name: kube-state-metrics
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
@@ -353,6 +357,11 @@ spec:
         app.kubernetes.io/part-of: modular-backend-lab
     spec:
       serviceAccountName: kube-state-metrics
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: kube-state-metrics
           image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.15.0
@@ -375,6 +384,19 @@ spec:
               port: http
             initialDelaySeconds: 15
             periodSeconds: 20
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
 ---
 apiVersion: v1
 kind: Service
@@ -400,15 +422,24 @@ metadata:
     app.kubernetes.io/part-of: modular-backend-lab
 spec:
   replicas: 1
+  revisionHistoryLimit: 2
+  progressDeadlineSeconds: 120
   selector:
     matchLabels:
       app.kubernetes.io/name: prometheus
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
         app.kubernetes.io/name: prometheus
         app.kubernetes.io/part-of: modular-backend-lab
     spec:
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: prometheus
           image: prom/prometheus:v3.4.0
@@ -417,6 +448,30 @@ spec:
           ports:
             - name: http
               containerPort: 9090
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - name: prometheus-config
               mountPath: /etc/prometheus/prometheus.yml
@@ -450,15 +505,24 @@ metadata:
     app.kubernetes.io/part-of: modular-backend-lab
 spec:
   replicas: 1
+  revisionHistoryLimit: 2
+  progressDeadlineSeconds: 120
   selector:
     matchLabels:
       app.kubernetes.io/name: grafana
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
         app.kubernetes.io/name: grafana
         app.kubernetes.io/part-of: modular-backend-lab
     spec:
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: grafana
           image: grafana/grafana:12.0.0
@@ -474,6 +538,24 @@ spec:
               port: http
             initialDelaySeconds: 10
             periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - name: grafana-provisioning
               mountPath: /etc/grafana/provisioning/datasources/datasources.yml
@@ -518,15 +600,24 @@ metadata:
     app.kubernetes.io/part-of: modular-backend-lab
 spec:
   replicas: 1
+  revisionHistoryLimit: 2
+  progressDeadlineSeconds: 120
   selector:
     matchLabels:
       app.kubernetes.io/name: tempo
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
         app.kubernetes.io/name: tempo
         app.kubernetes.io/part-of: modular-backend-lab
     spec:
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: tempo
           image: grafana/tempo:2.8.0
@@ -537,6 +628,30 @@ spec:
               containerPort: 3200
             - name: otlp-http
               containerPort: 4318
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - name: tempo-config
               mountPath: /etc/tempo.yml
@@ -570,15 +685,24 @@ metadata:
     app.kubernetes.io/part-of: modular-backend-lab
 spec:
   replicas: 1
+  revisionHistoryLimit: 2
+  progressDeadlineSeconds: 120
   selector:
     matchLabels:
       app.kubernetes.io/name: loki
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
         app.kubernetes.io/name: loki
         app.kubernetes.io/part-of: modular-backend-lab
     spec:
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: loki
           image: grafana/loki:3.5.0
@@ -587,6 +711,30 @@ spec:
           ports:
             - name: http
               containerPort: 3100
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - name: loki-config
               mountPath: /etc/loki/local-config.yaml
@@ -620,15 +768,24 @@ metadata:
     app.kubernetes.io/part-of: modular-backend-lab
 spec:
   replicas: 1
+  revisionHistoryLimit: 2
+  progressDeadlineSeconds: 120
   selector:
     matchLabels:
       app.kubernetes.io/name: alloy
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
         app.kubernetes.io/name: alloy
         app.kubernetes.io/part-of: modular-backend-lab
     spec:
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: alloy
           image: grafana/alloy:v1.8.3
@@ -638,6 +795,18 @@ spec:
           ports:
             - name: http
               containerPort: 12345
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - name: alloy-config
               mountPath: /etc/alloy/config.alloy

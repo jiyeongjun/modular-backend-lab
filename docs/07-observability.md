@@ -61,6 +61,8 @@ The kind manifests under `deploy/k8s/local/` run the observability stack inside 
 - Loki as a provisioned log datasource.
 - Alloy as the local collector placeholder matching the Docker observability stack.
 - kube-state-metrics for API, worker, scheduler, and observability pod/deployment state.
+- Conservative resources, security contexts, termination grace, and health probes for observability
+  components that expose stable HTTP health endpoints.
 
 Run:
 
@@ -74,3 +76,7 @@ Then open Grafana at http://localhost:3001 with `admin` / `admin`.
 This baseline does not add application log shipping. Pino logs remain JSON-shaped on stdout/stderr,
 and a future Kubernetes log collector can ship them to Loki without changing domain or application
 code.
+
+Worker and scheduler pods do not expose HTTP probe endpoints in the local baseline. Their runtime
+health is process-centered: Kubernetes restarts exited processes, deployment availability shows
+rollout state, kube-state-metrics reports restarts, and Pino logs carry job/runtime context.

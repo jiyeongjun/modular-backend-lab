@@ -8,10 +8,14 @@ metadata:
     app.kubernetes.io/part-of: modular-backend-lab
 spec:
   replicas: 1
+  revisionHistoryLimit: 3
+  progressDeadlineSeconds: 180
   selector:
     matchLabels:
       app.kubernetes.io/name: modular-backend-lab
       app.kubernetes.io/component: scheduler
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
@@ -19,6 +23,14 @@ spec:
         app.kubernetes.io/component: scheduler
         app.kubernetes.io/part-of: modular-backend-lab
     spec:
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: scheduler
           image: modular-backend-lab:local
@@ -34,3 +46,16 @@ spec:
           env:
             - name: OTEL_SERVICE_NAME
               value: modular-backend-lab-scheduler
+          resources:
+            requests:
+              cpu: 50m
+              memory: 192Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
