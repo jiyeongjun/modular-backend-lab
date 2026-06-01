@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  labels:
+    app.kubernetes.io/name: modular-backend-lab
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: modular-backend-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: modular-backend-lab
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: modular-backend-lab
+        app.kubernetes.io/component: worker
+        app.kubernetes.io/part-of: modular-backend-lab
+    spec:
+      containers:
+        - name: worker
+          image: modular-backend-lab:local
+          imagePullPolicy: IfNotPresent
+          command:
+            - node
+            - dist/workers/outbox-worker.js
+          envFrom:
+            - configMapRef:
+                name: modular-backend-lab-config
+            - secretRef:
+                name: modular-backend-lab-secrets
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: modular-backend-lab-worker

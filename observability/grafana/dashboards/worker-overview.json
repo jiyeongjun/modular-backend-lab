@@ -1,19 +1,58 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "panels": [
     {
       "datasource": "Prometheus",
-      "fieldConfig": { "defaults": {}, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
       "id": 1,
-      "targets": [{ "expr": "up", "refId": "A" }],
-      "title": "Worker scrape status placeholder",
+      "targets": [
+        {
+          "expr": "kube_pod_status_phase{namespace=\"modular-backend-lab\",pod=~\"worker-.*|scheduler-.*\",phase=\"Running\"}",
+          "legendFormat": "{{ pod }}",
+          "refId": "A"
+        }
+      ],
+      "title": "Worker and scheduler pods running",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "kube_pod_container_status_restarts_total{namespace=\"modular-backend-lab\",container=~\"worker|scheduler\"}",
+          "legendFormat": "{{ pod }}",
+          "refId": "A"
+        }
+      ],
+      "title": "Worker and scheduler restarts",
       "type": "stat"
     }
   ],
   "schemaVersion": 39,
   "title": "Worker Overview",
   "uid": "worker-overview",
-  "version": 1
+  "version": 2
 }

@@ -12,6 +12,18 @@ const EnvSchema = z.object({
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().default("http://localhost:4318"),
   OTEL_TRACES_EXPORTER: z.enum(["otlp", "none"]).default("otlp"),
   OTEL_METRICS_EXPORTER: z.enum(["otlp", "none"]).default("otlp"),
+  OUTBOX_WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(30_000),
+  SCHEDULER_INVENTORY_RESERVATION_EXPIRER_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60_000),
+  SCHEDULER_FULFILLMENT_STATUS_SYNCER_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(300_000),
+  SCHEDULER_SETTLEMENT_SYNCER_INTERVAL_MS: z.coerce.number().int().positive().default(300_000),
   TOSS_PAYMENTS_SECRET_KEY: z.string().min(1).optional(),
   TOSS_PAYMENTS_BASE_URL: z.string().url().default("https://api.tosspayments.com"),
 });
@@ -29,6 +41,14 @@ export type AppConfig = Readonly<{
     endpoint: string;
     tracesExporter: "otlp" | "none";
     metricsExporter: "otlp" | "none";
+  };
+  worker: {
+    outboxPollIntervalMs: number;
+  };
+  scheduler: {
+    inventoryReservationExpirerIntervalMs: number;
+    fulfillmentStatusSyncerIntervalMs: number;
+    settlementSyncerIntervalMs: number;
   };
   tossPayments: {
     secretKey: string | null;
@@ -52,6 +72,15 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
       endpoint: parsed.OTEL_EXPORTER_OTLP_ENDPOINT,
       tracesExporter: parsed.OTEL_TRACES_EXPORTER,
       metricsExporter: parsed.OTEL_METRICS_EXPORTER,
+    },
+    worker: {
+      outboxPollIntervalMs: parsed.OUTBOX_WORKER_POLL_INTERVAL_MS,
+    },
+    scheduler: {
+      inventoryReservationExpirerIntervalMs:
+        parsed.SCHEDULER_INVENTORY_RESERVATION_EXPIRER_INTERVAL_MS,
+      fulfillmentStatusSyncerIntervalMs: parsed.SCHEDULER_FULFILLMENT_STATUS_SYNCER_INTERVAL_MS,
+      settlementSyncerIntervalMs: parsed.SCHEDULER_SETTLEMENT_SYNCER_INTERVAL_MS,
     },
     tossPayments: {
       secretKey: parsed.TOSS_PAYMENTS_SECRET_KEY ?? null,

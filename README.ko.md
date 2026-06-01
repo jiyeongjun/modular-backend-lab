@@ -267,6 +267,47 @@ pnpm db:migrate
 pnpm dev
 ```
 
+### 로컬 Kubernetes(kind)
+
+로컬 Kubernetes baseline은 EKS로 가기 전 같은 배포 모델을 kind에서 검증하기 위한 구성입니다. API,
+outbox worker, scheduler, migration job, Postgres, Valkey, Prometheus, Grafana, Tempo, Loki, Alloy,
+kube-state-metrics를 Kubernetes 안에 띄웁니다.
+
+필수 도구:
+
+- Docker
+- kind
+- kubectl
+
+baseline 시작:
+
+```bash
+scripts/k8s-local-up.sh
+```
+
+로컬 포트 열기:
+
+```bash
+scripts/k8s-local-port-forward.sh
+```
+
+접속 경로:
+
+- API health: http://localhost:3000/healthz
+- API readiness: http://localhost:3000/readyz
+- Grafana: http://localhost:3001 (`admin` / `admin`)
+- Prometheus: http://localhost:9090
+
+kind cluster 삭제:
+
+```bash
+scripts/k8s-local-down.sh
+```
+
+manifest는 `deploy/k8s/local/`에 있습니다. `secrets.example.yaml`은 kind 전용 non-sensitive 기본값을
+담고 있으며 local kustomization에서 바로 적용됩니다. Postgres와 Valkey는 재생성하기 쉬운 disposable
+`emptyDir` volume을 사용합니다.
+
 예시 요청:
 
 ```bash
@@ -429,6 +470,13 @@ pnpm worker:fulfillment-sync
 pnpm worker:settlement-sync
 ```
 
+장기 실행 local runtime adapter:
+
+```bash
+pnpm dev:outbox-worker
+pnpm dev:scheduler
+```
+
 ## 관측성
 
 ```bash
@@ -442,6 +490,26 @@ pnpm observability:up
 
 서비스는 `/metrics`에서 Prometheus metrics를 노출하고, OTLP traces/metrics를
 `OTEL_EXPORTER_OTLP_ENDPOINT`로 export할 수 있습니다.
+
+로컬 Kubernetes에서는 Prometheus가 API service의 `/metrics`를 scrape하고, Tempo가 runtime pod의 OTLP
+HTTP trace export를 받으며, kube-state-metrics가 API/worker/scheduler/observability pod와 deployment
+상태를 Grafana에서 볼 수 있게 합니다. Loki는 Grafana datasource로 배포되지만, 이번 baseline에서
+application log shipping collector를 새로 추가하지는 않습니다. Pino log는 이후 log collector가 수집할
+수 있도록 JSON 형태를 유지합니다.
+
+## EKS 고려사항
+
+이번 범위는 로컬 Kubernetes baseline입니다. Terraform, EKS cluster resource, VPC, ALB, RDS, SQS, IRSA,
+Secrets Manager 생성은 포함하지 않습니다.
+
+EKS로 갈 때도 adapter 경계는 유지합니다.
+
+- in-cluster Postgres는 `DATABASE_URL`을 통해 RDS로 교체합니다.
+- local BullMQ/Valkey는 기존 queue/event publisher port 뒤의 SQS adapter로 교체합니다.
+- local Kubernetes Secret은 Secrets Manager 또는 별도 secret delivery 방식으로 교체합니다.
+- ingress는 ALB 또는 Kubernetes ingress controller 뒤에 둡니다.
+- OpenTelemetry, Prometheus, Grafana, Loki, Tempo는 domain/application 밖의 runtime/observability
+  concern으로 유지합니다.
 
 ## 환경 변수
 
@@ -466,6 +534,8 @@ pnpm quality
 ```bash
 pnpm dev
 pnpm dev:worker
+pnpm dev:outbox-worker
+pnpm dev:scheduler
 ```
 
 DB migration:

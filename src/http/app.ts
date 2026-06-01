@@ -98,12 +98,13 @@ import { createErrorHandler } from "./middleware/error-handler.js";
 import { requestLoggerMiddleware } from "./middleware/logger.js";
 import { requestIdMiddleware } from "./middleware/request-id.js";
 import { httpMetricsMiddleware } from "./middleware/telemetry.js";
-import { createHealthRoutes } from "./routes/health.routes.js";
+import { createHealthRoutes, type ReadinessCheck } from "./routes/health.routes.js";
 import { createMetricsRoutes } from "./routes/metrics.routes.js";
 
 export function createApp(deps: {
   logger: Logger;
   metrics: HttpMetrics;
+  readinessCheck?: ReadinessCheck;
   addAddressUseCase: AddAddressUseCase;
   updateAddressUseCase: UpdateAddressUseCase;
   setDefaultAddressUseCase: SetDefaultAddressUseCase;
@@ -162,7 +163,12 @@ export function createApp(deps: {
   app.use("*", requestLoggerMiddleware(deps.logger));
   app.use("*", httpMetricsMiddleware(deps.metrics));
 
-  app.route("/", createHealthRoutes());
+  const healthRoutes =
+    deps.readinessCheck === undefined
+      ? createHealthRoutes()
+      : createHealthRoutes({ readinessCheck: deps.readinessCheck });
+
+  app.route("/", healthRoutes);
   app.route("/", createMetricsRoutes(deps.metrics));
   app.route(
     "/",

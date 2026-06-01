@@ -50,3 +50,27 @@ Inspect request rates and latency in Grafana, raw metrics in Prometheus, traces 
 Loki when log collection is configured.
 
 Use `ai/skills/add-observability-signal.md` before adding a metric, span, or log.
+
+## Local Kubernetes Baseline
+
+The kind manifests under `deploy/k8s/local/` run the observability stack inside Kubernetes:
+
+- Grafana for dashboards.
+- Prometheus for API `/metrics` and kube-state-metrics scraping.
+- Tempo for OTLP HTTP traces exported by runtime pods.
+- Loki as a provisioned log datasource.
+- Alloy as the local collector placeholder matching the Docker observability stack.
+- kube-state-metrics for API, worker, scheduler, and observability pod/deployment state.
+
+Run:
+
+```bash
+scripts/k8s-local-up.sh
+scripts/k8s-local-port-forward.sh
+```
+
+Then open Grafana at http://localhost:3001 with `admin` / `admin`.
+
+This baseline does not add application log shipping. Pino logs remain JSON-shaped on stdout/stderr,
+and a future Kubernetes log collector can ship them to Loki without changing domain or application
+code.

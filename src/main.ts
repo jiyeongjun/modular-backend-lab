@@ -2,6 +2,7 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./http/app.js";
 import { loadConfig } from "./infra/config/env.js";
 import { createDatabase } from "./infra/db/db.js";
+import { checkDatabaseReadiness } from "./infra/db/readiness.js";
 import { createLogger } from "./infra/logger/logger.js";
 import { createMetricsRegistry } from "./infra/telemetry/metrics.js";
 import { initializeTelemetry } from "./infra/telemetry/telemetry.js";
@@ -417,6 +418,7 @@ const closeSupportTicketUseCase = createCloseSupportTicketUseCase({
 const app = createApp({
   logger,
   metrics: createMetricsRegistry(),
+  readinessCheck: () => checkDatabaseReadiness(db),
   addAddressUseCase,
   updateAddressUseCase,
   setDefaultAddressUseCase,
@@ -479,11 +481,38 @@ const server = serve(
   },
 );
 
+let shutdownPromise: Promise<void> | null = null;
+
+function closeServer(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.close((error?: Error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
 async function shutdown(signal: string): Promise<void> {
-  logger.info({ signal }, "shutting down");
-  server.close();
-  await db.destroy();
-  await telemetry.shutdown();
+  if (shutdownPromise === null) {
+    shutdownPromise = (async () => {
+      logger.info({ signal }, "shutting down");
+      await closeServer();
+      await db.destroy();
+      await telemetry.shutdown();
+      logger.info({ signal }, "shutdown complete");
+    })();
+  }
+
+  try {
+    await shutdownPromise;
+  } catch (error) {
+    logger.error({ error, signal }, "shutdown failed");
+    process.exitCode = 1;
+  }
 }
 
 process.on("SIGTERM", () => {

@@ -1,11 +1,21 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "panels": [
     {
       "datasource": "Prometheus",
-      "fieldConfig": { "defaults": {}, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
       "id": 1,
       "targets": [
         {
@@ -15,10 +25,32 @@
       ],
       "title": "HTTP p95 latency",
       "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "up{job=\"modular-backend-lab-api\"}",
+          "refId": "A"
+        }
+      ],
+      "title": "API scrape health",
+      "type": "stat"
     }
   ],
   "schemaVersion": 39,
   "title": "HTTP Overview",
   "uid": "http-overview",
-  "version": 1
+  "version": 2
 }

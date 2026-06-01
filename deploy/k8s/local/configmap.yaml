@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: modular-backend-lab-config
+  labels:
+    app.kubernetes.io/name: modular-backend-lab
+    app.kubernetes.io/part-of: modular-backend-lab
+data:
+  NODE_ENV: production
+  PORT: "3000"
+  LOG_LEVEL: info
+  VALKEY_URL: redis://valkey:6379
+  QUEUE_BACKEND: bullmq
+  BULLMQ_QUEUE_PREFIX: modular-backend-lab-local
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318
+  OTEL_TRACES_EXPORTER: otlp
+  OTEL_METRICS_EXPORTER: none
+  OUTBOX_WORKER_POLL_INTERVAL_MS: "30000"
+  SCHEDULER_INVENTORY_RESERVATION_EXPIRER_INTERVAL_MS: "60000"
+  SCHEDULER_FULFILLMENT_STATUS_SYNCER_INTERVAL_MS: "300000"
+  SCHEDULER_SETTLEMENT_SYNCER_INTERVAL_MS: "300000"

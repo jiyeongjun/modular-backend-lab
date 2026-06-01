@@ -269,6 +269,47 @@ pnpm db:migrate
 pnpm dev
 ```
 
+### Local Kubernetes(kind)
+
+The local Kubernetes baseline runs the same deployment shape before moving to EKS: API,
+outbox worker, scheduler, migration job, Postgres, Valkey, Prometheus, Grafana, Tempo, Loki, Alloy,
+and kube-state-metrics.
+
+Prerequisites:
+
+- Docker
+- kind
+- kubectl
+
+Start the baseline:
+
+```bash
+scripts/k8s-local-up.sh
+```
+
+Open local ports:
+
+```bash
+scripts/k8s-local-port-forward.sh
+```
+
+Then use:
+
+- API health: http://localhost:3000/healthz
+- API readiness: http://localhost:3000/readyz
+- Grafana: http://localhost:3001 (`admin` / `admin`)
+- Prometheus: http://localhost:9090
+
+Stop and remove the kind cluster:
+
+```bash
+scripts/k8s-local-down.sh
+```
+
+The local manifests live in `deploy/k8s/local/`. `secrets.example.yaml` is intentionally local-only
+and contains non-sensitive defaults for kind. Postgres and Valkey use disposable `emptyDir` volumes
+so the cluster can be recreated cheaply.
+
 Example request:
 
 ```bash
@@ -431,6 +472,13 @@ Run the settlement sync job:
 pnpm worker:settlement-sync
 ```
 
+Run long-lived local runtime adapters:
+
+```bash
+pnpm dev:outbox-worker
+pnpm dev:scheduler
+```
+
 ## Observability
 
 ```bash
@@ -444,6 +492,26 @@ pnpm observability:up
 
 The service exposes Prometheus metrics at `/metrics` and can export OTLP traces/metrics to
 `OTEL_EXPORTER_OTLP_ENDPOINT`.
+
+In local Kubernetes, Prometheus scrapes the API service at `/metrics`, Tempo receives OTLP HTTP
+traces from runtime pods, and kube-state-metrics provides pod/deployment state for the API, worker,
+scheduler, and observability pods. Loki is deployed and provisioned as a Grafana datasource, but
+application log shipping is not added here; Pino logs remain JSON-shaped for a future log collector.
+
+## EKS Considerations
+
+This repository only adds the local Kubernetes baseline. Terraform, EKS cluster resources, VPC, ALB,
+RDS, SQS, IRSA, and Secrets Manager provisioning are out of scope.
+
+For EKS-style deployment, keep the same adapter boundaries:
+
+- Replace in-cluster Postgres with RDS through `DATABASE_URL`.
+- Replace local BullMQ/Valkey with an SQS queue adapter behind the existing queue/event publisher
+  ports.
+- Replace local Kubernetes Secrets with Secrets Manager or another secret delivery mechanism.
+- Put ingress behind ALB or another Kubernetes ingress controller.
+- Keep OpenTelemetry, Prometheus, Grafana, Loki, and Tempo as runtime/observability concerns outside
+  domain and application code.
 
 ## Environment
 
@@ -468,6 +536,8 @@ Development server:
 ```bash
 pnpm dev
 pnpm dev:worker
+pnpm dev:outbox-worker
+pnpm dev:scheduler
 ```
 
 DB migration:
