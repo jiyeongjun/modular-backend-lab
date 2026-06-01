@@ -254,20 +254,15 @@ data:
 
     otelcol.receiver.otlp "default" {
       http {}
+
+      output {
+        traces = [otelcol.exporter.otlphttp.tempo.input]
+      }
     }
 
     otelcol.exporter.otlphttp "tempo" {
       client {
         endpoint = "http://tempo:4318"
-      }
-    }
-
-    otelcol.service "default" {
-      pipelines {
-        traces = {
-          receivers = [otelcol.receiver.otlp.default.input]
-          exporters = [otelcol.exporter.otlphttp.tempo.input]
-        }
       }
     }
 ---
@@ -361,13 +356,17 @@ spec:
       containers:
         - name: kube-state-metrics
           image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.15.0
+          args:
+            - --resources=pods,deployments,jobs,cronjobs
           ports:
             - name: http
               containerPort: 8080
+            - name: telemetry
+              containerPort: 8081
           readinessProbe:
             httpGet:
               path: /readyz
-              port: http
+              port: telemetry
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
