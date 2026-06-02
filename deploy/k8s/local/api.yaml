@@ -98,18 +98,3 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: api
-  labels:
-    app.kubernetes.io/name: modular-backend-lab
-    app.kubernetes.io/component: api
-    app.kubernetes.io/part-of: modular-backend-lab
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: modular-backend-lab
-      app.kubernetes.io/component: api

@@ -80,3 +80,6 @@ code.
 Worker and scheduler pods do not expose HTTP probe endpoints in the local baseline. Their runtime
 health is process-centered: Kubernetes restarts exited processes, deployment availability shows
 rollout state, kube-state-metrics reports restarts, and Pino logs carry job/runtime context.
+
+The single-replica local API baseline intentionally does not include a PodDisruptionBudget. Add one
+in a multi-replica operational overlay after choosing the disruption policy.

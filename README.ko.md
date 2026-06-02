@@ -314,10 +314,12 @@ local baseline manifest에는 운영 배포로 넘어가기 전에 확인할 최
   맞춰 30초 termination grace를 둡니다.
 - API, worker, scheduler, migration job은 resource request/limit, non-root 앱 컨테이너 보안 컨텍스트,
   `RuntimeDefault` seccomp, capability drop, privilege escalation 차단을 명시합니다.
+- migration job은 900초 active deadline을 두고, `scripts/k8s-local-up.sh`도 기본 900초까지 완료를
+  기다립니다. 더 긴 로컬 검증이 필요하면 `K8S_MIGRATION_WAIT_TIMEOUT`으로 조정합니다.
 - worker와 scheduler는 HTTP endpoint가 없는 process runtime입니다. 억지 HTTP probe를 만들지 않고
   process exit, Kubernetes restart, JSON log, bounded resources, deployment availability로 상태를 봅니다.
 - scheduler와 worker rollout은 local singleton에서 중복 실행을 피하기 위해 `Recreate`를 사용합니다. API는
-  rolling update와 API-only PodDisruptionBudget를 둡니다.
+  rolling update를 유지합니다. 단일 replica kind baseline에는 PodDisruptionBudget를 두지 않습니다.
 - HPA는 metrics-server와 부하 기준이 필요하므로 local baseline에는 넣지 않습니다. NetworkPolicy도 kind
   기본 CNI에서 강제되지 않을 수 있어 manifest 대신 EKS 전환 판단으로 남깁니다.
 
@@ -522,6 +524,8 @@ EKS로 갈 때도 adapter 경계는 유지합니다.
 - local Kubernetes Secret은 Secrets Manager 또는 별도 secret delivery 방식으로 교체합니다.
 - pod의 AWS 접근은 static credential 대신 IRSA 같은 workload identity로 연결합니다.
 - ingress는 ALB 또는 Kubernetes ingress controller 뒤에 둡니다.
+- API PodDisruptionBudget는 API replica를 2개 이상으로 운영하고 `minAvailable` 또는 `maxUnavailable`
+  정책을 정한 뒤 추가합니다.
 - HPA는 metrics-server 또는 managed metrics 경로와 SLO/부하 기준을 정한 뒤 추가합니다.
 - NetworkPolicy는 실제 CNI enforcement를 확인한 뒤 namespace, DB, queue, observability 흐름을 제한합니다.
 - OpenTelemetry, Prometheus, Grafana, Loki, Tempo는 domain/application 밖의 runtime/observability

@@ -318,11 +318,14 @@ deployment:
 - API, worker, scheduler, and migration pods declare resource requests/limits, non-root app
   container security context, `RuntimeDefault` seccomp, dropped capabilities, and blocked privilege
   escalation.
+- The migration job has a 900 second active deadline, and `scripts/k8s-local-up.sh` waits up to the
+  same default. Use `K8S_MIGRATION_WAIT_TIMEOUT` when a longer local verification run is needed.
 - Worker and scheduler are process runtimes without HTTP endpoints. The baseline does not invent
   HTTP probes; health is observed through process exit, Kubernetes restart, JSON logs, bounded
   resources, and deployment availability.
 - Scheduler and worker rollouts use `Recreate` in the local singleton baseline to avoid duplicate
-  process execution. The API keeps a rolling update and an API-only PodDisruptionBudget.
+  process execution. The API keeps a rolling update. The single-replica kind baseline does not define
+  a PodDisruptionBudget.
 - HPA is documented only because it needs metrics-server and load targets. NetworkPolicy is also
   documented only because kind's default CNI may not enforce it.
 
@@ -527,6 +530,8 @@ For EKS-style deployment, keep the same adapter boundaries:
 - Replace local Kubernetes Secrets with Secrets Manager or another secret delivery mechanism.
 - Use workload identity such as IRSA for pod AWS access instead of static credentials.
 - Put ingress behind ALB or another Kubernetes ingress controller.
+- Add an API PodDisruptionBudget after running at least two API replicas and choosing a
+  `minAvailable` or `maxUnavailable` policy.
 - Add HPA only after choosing metrics-server or a managed metrics path plus SLO/load targets.
 - Add NetworkPolicy only after confirming CNI enforcement and the required namespace, database,
   queue, and observability flows.

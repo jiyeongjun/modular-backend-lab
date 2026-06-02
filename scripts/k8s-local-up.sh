@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CLUSTER_NAME="${KIND_CLUSTER_NAME:-modular-backend-lab}"
 NAMESPACE="${K8S_NAMESPACE:-modular-backend-lab}"
 IMAGE_NAME="${APP_IMAGE:-modular-backend-lab:local}"
+MIGRATION_WAIT_TIMEOUT="${K8S_MIGRATION_WAIT_TIMEOUT:-900s}"
 RENDER_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -79,6 +80,7 @@ kind load docker-image "$IMAGE_NAME" --name "$CLUSTER_NAME"
 kubectl config use-context "kind-$CLUSTER_NAME" >/dev/null
 kubectl apply -f "$RENDER_DIR/namespace.yaml"
 kubectl -n "$NAMESPACE" delete job modular-backend-lab-migration --ignore-not-found=true
+kubectl -n "$NAMESPACE" delete pdb api --ignore-not-found=true
 kubectl apply -k "$RENDER_DIR"
 kubectl -n "$NAMESPACE" rollout restart \
   deployment/api \
@@ -93,7 +95,7 @@ kubectl -n "$NAMESPACE" rollout restart \
 kubectl -n "$NAMESPACE" wait --for=condition=available deployment/postgres --timeout=180s
 kubectl -n "$NAMESPACE" wait --for=condition=available deployment/valkey --timeout=180s
 
-if ! kubectl -n "$NAMESPACE" wait --for=condition=complete job/modular-backend-lab-migration --timeout=180s; then
+if ! kubectl -n "$NAMESPACE" wait --for=condition=complete job/modular-backend-lab-migration --timeout="$MIGRATION_WAIT_TIMEOUT"; then
   kubectl -n "$NAMESPACE" logs job/modular-backend-lab-migration
   exit 1
 fi
@@ -116,6 +118,9 @@ Local Kubernetes baseline is running.
 
 Open local ports with:
   scripts/k8s-local-port-forward.sh
+
+Optional migration wait override:
+  K8S_MIGRATION_WAIT_TIMEOUT=1200s scripts/k8s-local-up.sh
 
 Then use:
   API health: http://localhost:3000/healthz
