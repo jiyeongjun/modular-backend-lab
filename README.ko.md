@@ -279,6 +279,12 @@ kube-state-metrics를 Kubernetes 안에 띄웁니다.
 - kind
 - kubectl
 
+cluster 없이 local manifest 렌더링과 baseline 기본값을 정적으로 검증:
+
+```bash
+pnpm k8s:validate
+```
+
 baseline 시작:
 
 ```bash

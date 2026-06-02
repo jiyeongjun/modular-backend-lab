@@ -281,6 +281,12 @@ Prerequisites:
 - kind
 - kubectl
 
+Statically validate local manifest rendering and baseline defaults without a cluster:
+
+```bash
+pnpm k8s:validate
+```
+
 Start the baseline:
 
 ```bash
