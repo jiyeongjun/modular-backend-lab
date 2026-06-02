@@ -33,8 +33,11 @@ if [[ "$IMAGE_LAST_SEGMENT" == *:* ]]; then
   IMAGE_TAG="${IMAGE_NAME##*:}"
 fi
 
-cp "$ROOT_DIR"/deploy/k8s/local/*.yaml "$RENDER_DIR"/
-cat >"$RENDER_DIR/namespace.yaml" <<EOF
+mkdir -p "$RENDER_DIR/base" "$RENDER_DIR/local"
+cp "$ROOT_DIR"/deploy/k8s/base/*.yaml "$RENDER_DIR/base"/
+cp "$ROOT_DIR"/deploy/k8s/local/*.yaml "$RENDER_DIR/local"/
+
+cat >"$RENDER_DIR/local/namespace.yaml" <<EOF
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -44,28 +47,24 @@ metadata:
     app.kubernetes.io/part-of: modular-backend-lab
 EOF
 
-cat >"$RENDER_DIR/kustomization.yaml" <<EOF
+cat >"$RENDER_DIR/local/kustomization.yaml" <<EOF
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: "$NAMESPACE"
 resources:
   - namespace.yaml
   - secrets.example.yaml
-  - configmap.yaml
   - postgres.yaml
   - valkey.yaml
   - observability.yaml
-  - migration-job.yaml
-  - api.yaml
-  - worker.yaml
-  - scheduler.yaml
+  - ../base
 images:
   - name: modular-backend-lab
     newName: "$IMAGE_REPOSITORY"
 EOF
 
 if [[ -n "$IMAGE_TAG" ]]; then
-  cat >>"$RENDER_DIR/kustomization.yaml" <<EOF
+  cat >>"$RENDER_DIR/local/kustomization.yaml" <<EOF
     newTag: "$IMAGE_TAG"
 EOF
 fi
@@ -78,10 +77,10 @@ docker build -t "$IMAGE_NAME" "$ROOT_DIR"
 kind load docker-image "$IMAGE_NAME" --name "$CLUSTER_NAME"
 
 kubectl config use-context "kind-$CLUSTER_NAME" >/dev/null
-kubectl apply -f "$RENDER_DIR/namespace.yaml"
+kubectl apply -f "$RENDER_DIR/local/namespace.yaml"
 kubectl -n "$NAMESPACE" delete job modular-backend-lab-migration --ignore-not-found=true
 kubectl -n "$NAMESPACE" delete pdb api --ignore-not-found=true
-kubectl apply -k "$RENDER_DIR"
+kubectl apply -k "$RENDER_DIR/local"
 kubectl -n "$NAMESPACE" rollout restart \
   deployment/api \
   deployment/worker \

@@ -269,7 +269,7 @@ pnpm dev
 
 ### 로컬 Kubernetes(kind)
 
-로컬 Kubernetes baseline은 EKS로 가기 전 같은 배포 모델을 kind에서 검증하기 위한 구성입니다. API,
+로컬 Kubernetes baseline은 API와 background runtime을 kind에서 함께 검증하기 위한 구성입니다. API,
 outbox worker, scheduler, migration job, Postgres, Valkey, Prometheus, Grafana, Tempo, Loki, Alloy,
 kube-state-metrics를 Kubernetes 안에 띄웁니다.
 
@@ -310,9 +310,14 @@ kind cluster 삭제:
 scripts/k8s-local-down.sh
 ```
 
-manifest는 `deploy/k8s/local/`에 있습니다. `secrets.example.yaml`은 kind 전용 non-sensitive 기본값을
-담고 있으며 local kustomization에서 바로 적용됩니다. Postgres와 Valkey는 재생성하기 쉬운 disposable
-`emptyDir` volume을 사용합니다.
+재사용 가능한 app/runtime manifest는 `deploy/k8s/base/`에 있습니다. 여기에는 API, worker, scheduler,
+migration job, 공통 configmap이 들어 있습니다.
+
+kind 전용 overlay는 `deploy/k8s/local/`에 있습니다. local kustomization은 `../base`를 참조하고,
+`secrets.example.yaml`, namespace, Postgres, Valkey, observability stack, kind cluster config를 local에
+둡니다. `secrets.example.yaml`은 kind 전용 non-sensitive 기본값을 담고 있으며 local kustomization에서
+바로 적용됩니다. Postgres와 Valkey는 재생성하기 쉬운 disposable `emptyDir` volume을 사용합니다.
+`kubectl kustomize deploy/k8s/local`은 전체 local baseline을 렌더링합니다.
 
 local baseline manifest에는 운영 배포로 넘어가기 전에 확인할 최소 runtime 기본값을 넣어 둡니다.
 
@@ -520,8 +525,8 @@ application log shipping collector를 새로 추가하지는 않습니다. Pino 
 
 ## EKS 고려사항
 
-이번 범위는 로컬 Kubernetes baseline입니다. Terraform, EKS cluster resource, VPC, ALB, RDS, SQS, IRSA,
-Secrets Manager 생성은 포함하지 않습니다.
+이번 범위는 재사용 가능한 Kubernetes base와 kind 전용 local overlay입니다. EKS overlay, Terraform, EKS
+cluster resource, VPC, ALB, RDS, SQS, IRSA, Secrets Manager 생성은 포함하지 않습니다.
 
 EKS로 갈 때도 adapter 경계는 유지합니다.
 

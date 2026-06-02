@@ -271,9 +271,9 @@ pnpm dev
 
 ### Local Kubernetes(kind)
 
-The local Kubernetes baseline runs the same deployment shape before moving to EKS: API,
-outbox worker, scheduler, migration job, Postgres, Valkey, Prometheus, Grafana, Tempo, Loki, Alloy,
-and kube-state-metrics.
+The local Kubernetes baseline runs the API and background runtimes together in kind: API, outbox
+worker, scheduler, migration job, Postgres, Valkey, Prometheus, Grafana, Tempo, Loki, Alloy, and
+kube-state-metrics.
 
 Prerequisites:
 
@@ -312,9 +312,14 @@ Stop and remove the kind cluster:
 scripts/k8s-local-down.sh
 ```
 
-The local manifests live in `deploy/k8s/local/`. `secrets.example.yaml` is intentionally local-only
-and contains non-sensitive defaults for kind. Postgres and Valkey use disposable `emptyDir` volumes
-so the cluster can be recreated cheaply.
+Reusable app/runtime manifests live in `deploy/k8s/base/`: API, worker, scheduler, migration job, and
+the shared configmap.
+
+The kind-only overlay lives in `deploy/k8s/local/`. The local kustomization references `../base` and
+keeps `secrets.example.yaml`, namespace, Postgres, Valkey, the observability stack, and kind cluster
+config local. `secrets.example.yaml` contains non-sensitive defaults for kind and is applied by the
+local kustomization. Postgres and Valkey use disposable `emptyDir` volumes so the cluster can be
+recreated cheaply. `kubectl kustomize deploy/k8s/local` renders the full local baseline.
 
 The local baseline includes the minimum runtime defaults to check before moving toward an operational
 deployment:
@@ -525,8 +530,9 @@ application log shipping is not added here; Pino logs remain JSON-shaped for a f
 
 ## EKS Considerations
 
-This repository only adds the local Kubernetes baseline. Terraform, EKS cluster resources, VPC, ALB,
-RDS, SQS, IRSA, and Secrets Manager provisioning are out of scope.
+This repository only separates a reusable Kubernetes base from the kind-only local overlay. EKS
+overlay, Terraform, EKS cluster resources, VPC, ALB, RDS, SQS, IRSA, and Secrets Manager provisioning
+are out of scope.
 
 For EKS-style deployment, keep the same adapter boundaries:
 

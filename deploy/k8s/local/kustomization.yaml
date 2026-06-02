@@ -4,14 +4,10 @@ namespace: modular-backend-lab
 resources:
   - namespace.yaml
   - secrets.example.yaml
-  - configmap.yaml
   - postgres.yaml
   - valkey.yaml
   - observability.yaml
-  - migration-job.yaml
-  - api.yaml
-  - worker.yaml
-  - scheduler.yaml
+  - ../base
 images:
   - name: modular-backend-lab
     newName: modular-backend-lab
