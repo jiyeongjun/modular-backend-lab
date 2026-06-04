@@ -525,16 +525,26 @@ application log shipping collector를 새로 추가하지는 않습니다. Pino 
 
 ## EKS 고려사항
 
-이번 범위는 재사용 가능한 Kubernetes base와 kind 전용 local overlay입니다. EKS overlay, Terraform, EKS
-cluster resource, VPC, ALB, RDS, SQS, IRSA, Secrets Manager 생성은 포함하지 않습니다.
+이번 레포가 제공하는 Kubernetes 범위는 재사용 가능한 app/runtime base와 kind 전용 local overlay입니다.
+EKS overlay, Terraform, Helm, EKS cluster resource, VPC, ALB Ingress manifest, RDS, SQS, IRSA
+manifest, Secrets Manager/SSM resource 생성은 포함하지 않습니다.
 
-EKS로 갈 때도 adapter 경계는 유지합니다.
+`deploy/k8s/base/`는 API, worker, scheduler, migration job, 공통 configmap으로 구성된 runtime
+shape입니다. `deploy/k8s/local/`은 이 base에 namespace, non-sensitive secret example, local Postgres,
+local Valkey, local observability stack, kind cluster config를 붙이는 kind-only overlay입니다. EKS
+overlay를 만든다면 이 local-only 요소를 그대로 옮기지 않고 managed service 또는 별도 운영 경계로
+분리해야 합니다.
+
+EKS로 갈 때도 adapter 경계는 유지합니다. 더 자세한 판단 기준은
+[`docs/19-eks-operating-boundaries.md`](./docs/19-eks-operating-boundaries.md)를 참고하세요.
 
 - in-cluster Postgres는 `DATABASE_URL`을 통해 RDS로 교체합니다.
 - local BullMQ/Valkey는 기존 queue/event publisher port 뒤의 SQS adapter로 교체합니다.
-- local Kubernetes Secret은 Secrets Manager 또는 별도 secret delivery 방식으로 교체합니다.
-- pod의 AWS 접근은 static credential 대신 IRSA 같은 workload identity로 연결합니다.
-- ingress는 ALB 또는 Kubernetes ingress controller 뒤에 둡니다.
+- local Kubernetes Secret은 Secrets Manager, SSM, External Secrets 같은 secret delivery 방식으로
+  교체합니다.
+- pod의 AWS 접근은 static credential 대신 IRSA/workload identity로 연결합니다.
+- ingress는 ALB Ingress Controller 또는 별도 Kubernetes ingress controller 뒤에 둡니다. Hono와
+  application은 이 ingress 선택을 알지 않습니다.
 - API PodDisruptionBudget는 API replica를 2개 이상으로 운영하고 `minAvailable` 또는 `maxUnavailable`
   정책을 정한 뒤 추가합니다.
 - HPA는 metrics-server 또는 managed metrics 경로와 SLO/부하 기준을 정한 뒤 추가합니다.
@@ -636,6 +646,7 @@ Biome                      formatting and linting
 dependency-cruiser         import boundaries
 scripts/convention-scan.ts repository-specific drift checks
 docs/17-definition-of-done completion standard
+docs/19-eks-operating-boundaries EKS adapter/runtime boundary guide
 CI                         quality gates
 ```
 

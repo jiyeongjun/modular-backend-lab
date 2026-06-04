@@ -530,18 +530,28 @@ application log shipping is not added here; Pino logs remain JSON-shaped for a f
 
 ## EKS Considerations
 
-This repository only separates a reusable Kubernetes base from the kind-only local overlay. EKS
-overlay, Terraform, EKS cluster resources, VPC, ALB, RDS, SQS, IRSA, and Secrets Manager provisioning
-are out of scope.
+This repository currently provides a reusable app/runtime Kubernetes base and a kind-only local
+overlay. EKS overlays, Terraform, Helm, EKS cluster resources, VPC resources, ALB Ingress manifests,
+RDS, SQS, IRSA manifests, and Secrets Manager/SSM resource provisioning are out of scope.
 
-For EKS-style deployment, keep the same adapter boundaries:
+`deploy/k8s/base/` is the runtime shape for the API, worker, scheduler, migration job, and shared
+configmap. `deploy/k8s/local/` is the kind-only overlay that adds a namespace, non-sensitive secret
+example, local Postgres, local Valkey, local observability stack, and kind cluster config. An EKS
+overlay should separate those local-only pieces and replace them with managed services or explicit
+operational boundaries.
+
+For EKS-style deployment, keep the same adapter boundaries. See
+[`docs/19-eks-operating-boundaries.md`](./docs/19-eks-operating-boundaries.md) for the fuller
+operating checklist.
 
 - Replace in-cluster Postgres with RDS through `DATABASE_URL`.
 - Replace local BullMQ/Valkey with an SQS queue adapter behind the existing queue/event publisher
   ports.
-- Replace local Kubernetes Secrets with Secrets Manager or another secret delivery mechanism.
-- Use workload identity such as IRSA for pod AWS access instead of static credentials.
-- Put ingress behind ALB or another Kubernetes ingress controller.
+- Replace local Kubernetes Secrets with a secret delivery path such as Secrets Manager, SSM, or
+  External Secrets.
+- Use IRSA/workload identity for pod AWS access instead of static credentials.
+- Put ingress behind the ALB Ingress Controller or another Kubernetes ingress controller. Hono and
+  application code do not know that choice.
 - Add an API PodDisruptionBudget after running at least two API replicas and choosing a
   `minAvailable` or `maxUnavailable` policy.
 - Add HPA only after choosing metrics-server or a managed metrics path plus SLO/load targets.
@@ -645,6 +655,7 @@ Biome                      formatting and linting
 dependency-cruiser         import boundaries
 scripts/convention-scan.ts repository-specific drift checks
 docs/17-definition-of-done completion standard
+docs/19-eks-operating-boundaries EKS adapter/runtime boundary guide
 CI                         quality gates
 ```
 
