@@ -23,6 +23,23 @@ SQS + worker adapter
 
 BullMQ runs on Valkey. SQS replaces the queue layer itself.
 
+## Current Implementation Boundary
+
+- BullMQ and ioredis imports are allowed only in `src/infra/queue/**` queue adapters and
+  `src/workers/**` runtime composition files.
+- `src/jobs/**` processors depend on application usecases or publisher/repository ports. They must
+  not import BullMQ, ioredis, Redis/Valkey clients, AWS SQS SDKs, or local `src/infra/queue/**`
+  adapter implementations.
+- Worker entrypoints parse runtime input such as CLI job names, schedules, or queue messages into a
+  job/usecase/processor call. They must not implement domain business rules directly.
+- The current outbox publisher scans `outbox_events` through an `AsyncIterable`, publishes through an
+  `EventPublisher` port, then marks rows processed after publish. External queue publish must stay
+  outside long DB transactions.
+- SQS is documented as the AWS-style replacement boundary only. This repository does not currently
+  implement an SQS adapter.
+- `scripts/convention-scan.ts` fails when queue backend package imports or local queue adapter
+  imports appear outside the allowed queue/runtime boundary.
+
 ## Rules
 
 1. Queue backends are runtime adapters.

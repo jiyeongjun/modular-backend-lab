@@ -113,6 +113,9 @@ Kysely provides typed SQL but remains a persistence adapter. DB rows are explici
 models.
 
 Queue backends are isolated behind ports. Core processors do not know BullMQ, SQS, Redis, or Valkey.
+Current BullMQ/ioredis usage stays under `src/infra/queue/**`, and worker runtime composition under
+`src/workers/**` calls jobs, usecases, or processors. `src/jobs/**` does not directly import queue
+SDKs or queue adapters.
 
 OpenTelemetry and Grafana are runtime instrumentation boundaries. Pure domain logic does not log,
 emit metrics, or start traces directly.

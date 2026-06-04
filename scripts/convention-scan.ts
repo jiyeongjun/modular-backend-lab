@@ -18,6 +18,17 @@ const requiredStrictCompilerOptions = [
   "forceConsistentCasingInFileNames",
 ] as const;
 
+const queueBackendPackages = [
+  "@aws-sdk/client-sqs",
+  "@redis/client",
+  "bullmq",
+  "ioredis",
+  "iovalkey",
+  "redis",
+  "valkey",
+  "valkey-glide",
+] as const;
+
 async function listFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   const files: string[] = [];
@@ -45,12 +56,36 @@ function hasImport(source: string, packagePattern: RegExp): boolean {
     .some((line) => packagePattern.test(line));
 }
 
+function getImportSpecifiers(source: string): string[] {
+  const specifiers: string[] = [];
+  const importPatterns = [
+    /(?:import|export)\s+(?:type\s+)?[\s\S]*?\s+from\s+["']([^"']+)["']/g,
+    /import\s+(?:type\s+)?["']([^"']+)["']/g,
+    /import\s*\(\s*["']([^"']+)["']\s*\)/g,
+  ];
+
+  for (const pattern of importPatterns) {
+    for (const match of source.matchAll(pattern)) {
+      const specifier = match[1];
+      if (specifier) {
+        specifiers.push(specifier);
+      }
+    }
+  }
+
+  return specifiers;
+}
+
 function resolveImport(file: string, specifier: string): string | null {
   if (!specifier.startsWith(".")) {
     return null;
   }
 
   return path.normalize(path.resolve(path.dirname(file), specifier));
+}
+
+function toPortablePath(file: string): string {
+  return file.split(path.sep).join("/");
 }
 
 function stripLineComments(source: string): string {
@@ -62,6 +97,23 @@ function stripLineComments(source: string): string {
 
 function hasDocumentedNonNullAssertion(source: string): boolean {
   return source.includes("convention-scan allow non-null assertion");
+}
+
+function isPackageImport(specifier: string, packageName: string): boolean {
+  return specifier === packageName || specifier.startsWith(`${packageName}/`);
+}
+
+function isQueueBackendPackage(specifier: string): boolean {
+  return (
+    queueBackendPackages.some((packageName) => isPackageImport(specifier, packageName)) ||
+    specifier.startsWith("@redis/") ||
+    specifier.startsWith("@valkey/")
+  );
+}
+
+function isQueueRuntimeBoundary(relative: string): boolean {
+  const portable = toPortablePath(relative);
+  return portable.startsWith("src/infra/queue/") || portable.startsWith("src/workers/");
 }
 
 function scanTsconfig(root: string): Violation[] {
@@ -90,6 +142,7 @@ function scanFile(root: string, file: string, source: string): Violation[] {
   const inApplication = isLayer(file, "application");
   const inCore = inDomain || inApplication;
   const sourceWithoutLineComments = stripLineComments(source);
+  const importSpecifiers = getImportSpecifiers(sourceWithoutLineComments);
 
   if (inCore && hasImport(source, /from\s+["']hono(?:\/|["'])/)) {
     violations.push({ file: relative, message: "Hono import is not allowed in core layers" });
@@ -107,11 +160,29 @@ function scanFile(root: string, file: string, source: string): Violation[] {
     violations.push({ file: relative, message: "Pino import is not allowed in domain logic" });
   }
 
-  if (
-    inCore &&
-    hasImport(source, /from\s+["'](?:bullmq|ioredis|redis|@aws-sdk\/client-sqs)(?:\/|["'])/)
-  ) {
-    violations.push({ file: relative, message: "Queue backend imports are adapter-only" });
+  const queueBackendImports = importSpecifiers.filter(isQueueBackendPackage);
+  if (queueBackendImports.length > 0 && !isQueueRuntimeBoundary(relative)) {
+    violations.push({
+      file: relative,
+      message: `Queue backend package imports are only allowed in src/infra/queue or src/workers: ${Array.from(
+        new Set(queueBackendImports),
+      ).join(", ")}`,
+    });
+  }
+
+  for (const specifier of importSpecifiers) {
+    const resolved = resolveImport(file, specifier);
+    if (!resolved) {
+      continue;
+    }
+
+    const resolvedRelative = toPortablePath(path.relative(root, resolved));
+    if (resolvedRelative.startsWith("src/infra/queue/") && !isQueueRuntimeBoundary(relative)) {
+      violations.push({
+        file: relative,
+        message: "Queue adapter imports are only allowed in src/infra/queue or src/workers",
+      });
+    }
   }
 
   if (inCore && hasImport(source, /from\s+["']@opentelemetry\//)) {

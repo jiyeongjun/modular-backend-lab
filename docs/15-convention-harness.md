@@ -26,7 +26,8 @@ The harness layers are:
 ```
 
 Biome catches style. dependency-cruiser catches import direction. `convention-scan` catches
-repository-specific drift, including framework leakage, environment access outside config, focused or
-skipped tests, unsafe type escape hatches, and weakened TypeScript strictness.
+repository-specific drift, including framework leakage, queue backend leakage outside
+`src/infra/queue/**` and `src/workers/**`, environment access outside config, focused or skipped
+tests, unsafe type escape hatches, and weakened TypeScript strictness.
 
 Keep the scanner simple and maintainable. Do not turn it into a compiler plugin.

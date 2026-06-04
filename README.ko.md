@@ -113,7 +113,9 @@ Kysely는 typed SQL을 제공하지만 persistence adapter에만 머뭅니다. D
 쓰지 않고 mapper를 통해 명시적으로 변환합니다.
 
 Queue backend는 port 뒤에 격리됩니다. Core processor는 BullMQ, SQS, Redis, Valkey를 직접 알지
-않습니다.
+않습니다. 현재 BullMQ/ioredis 사용은 `src/infra/queue/**`에 머물고, worker runtime 조립은
+`src/workers/**`에서 job/usecase/processor를 호출합니다. `src/jobs/**`는 queue SDK나 queue adapter를
+직접 import하지 않습니다.
 
 OpenTelemetry와 Grafana stack은 runtime instrumentation 경계입니다. 순수 domain logic은 logging,
 metrics, traces를 직접 수행하지 않습니다.
