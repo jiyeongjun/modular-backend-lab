@@ -1,5 +1,22 @@
 # Review Checklist
 
+## CodeGraph-Assisted Review
+
+Use CodeGraph as a review aid before broad manual exploration when a change touches shared symbols,
+cross-layer flow, routes, usecases, jobs, or module boundaries.
+
+- Run `codegraph status` first. If the index is missing or stale, run `codegraph init -i` or
+  `codegraph sync`.
+- For domain/application symbol changes, run `codegraph impact <symbol>` to inspect caller and route
+  blast radius before deciding the review scope.
+- For usecase, route, job, or adapter changes, run `codegraph callers <symbol>` and
+  `codegraph callees <symbol>` where the call path is not obvious.
+- For changed source files, run `codegraph affected <file>` to help choose focused tests.
+- Treat CodeGraph output as review context only. Final verification still comes from tests,
+  typecheck, dependency-cruiser, convention scan, build, and any relevant smoke checks.
+
+## Questions
+
 - Did domain import any framework or infra dependency?
 - Did application import Hono or Kysely?
 - Did application import BullMQ, SQS, Valkey, or Redis clients?
