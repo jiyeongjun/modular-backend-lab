@@ -226,17 +226,18 @@ Before editing:
 
 1. Inspect existing module patterns.
 2. Read the relevant `ai/skills/*.md` playbook.
-3. Identify the target layer.
-4. Preserve dependency direction.
-5. Make the smallest coherent change.
-6. Preserve strict TypeScript settings.
-7. Prefer compile-time guarantees over runtime conventions when practical.
-8. Prefer native TypeScript before new dependencies.
-9. Add tests based on risk, not file count.
-10. Avoid mock-heavy implementation-detail tests.
-11. Update docs when conventions change.
-12. Run typecheck, Biome check, tests, architecture check, convention scan, and build.
-13. Report what changed and what could not be verified.
+3. Use `ai/skills/use-codegraph.md` before broad code exploration, flow tracing, or refactor planning.
+4. Identify the target layer.
+5. Preserve dependency direction.
+6. Make the smallest coherent change.
+7. Preserve strict TypeScript settings.
+8. Prefer compile-time guarantees over runtime conventions when practical.
+9. Prefer native TypeScript before new dependencies.
+10. Add tests based on risk, not file count.
+11. Avoid mock-heavy implementation-detail tests.
+12. Update docs when conventions change.
+13. Run typecheck, Biome check, tests, architecture check, convention scan, and build.
+14. Report what changed and what could not be verified.
 
 ## Forbidden Defaults
 
