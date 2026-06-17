@@ -284,7 +284,8 @@ Prerequisites:
 - kind
 - kubectl
 
-Statically validate local manifest rendering and baseline defaults without a cluster:
+`pnpm k8s:validate` is static manifest validation. It renders the local kustomization and checks
+baseline conventions without requiring a Kubernetes cluster:
 
 ```bash
 pnpm k8s:validate
@@ -295,6 +296,18 @@ Start the baseline:
 ```bash
 scripts/k8s-local-up.sh
 ```
+
+`pnpm k8s:smoke` is local kind runtime verification. Run it after the baseline is applied to confirm
+that kubectl points at the local kind context, the namespace exists, the API/worker/scheduler
+deployments rolled out, the migration job completed, the API health endpoints respond, and deployed
+observability services are reachable at a shallow service-proxy level:
+
+```bash
+pnpm k8s:smoke
+```
+
+The smoke script intentionally refuses kubectl contexts other than `kind-${KIND_CLUSTER_NAME:-modular-backend-lab}`;
+it is not an EKS or production manifest check.
 
 Open local ports:
 

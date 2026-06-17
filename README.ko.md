@@ -281,7 +281,8 @@ kube-state-metrics를 Kubernetes 안에 띄웁니다.
 - kind
 - kubectl
 
-cluster 없이 local manifest 렌더링과 baseline 기본값을 정적으로 검증:
+`pnpm k8s:validate`는 static manifest 검증입니다. Kubernetes cluster 없이 local kustomization을
+렌더링하고 baseline convention을 확인합니다:
 
 ```bash
 pnpm k8s:validate
@@ -292,6 +293,18 @@ baseline 시작:
 ```bash
 scripts/k8s-local-up.sh
 ```
+
+`pnpm k8s:smoke`는 local kind runtime 검증입니다. baseline을 적용한 뒤 실행해 kubectl이 local kind
+context를 보고 있는지, namespace가 있는지, API/worker/scheduler deployment가 rollout됐는지,
+migration job이 완료됐는지, API health endpoint가 응답하는지, 배포된 observability service가 얕은
+service-proxy 수준에서 접근 가능한지 확인합니다:
+
+```bash
+pnpm k8s:smoke
+```
+
+smoke script는 `kind-${KIND_CLUSTER_NAME:-modular-backend-lab}` 외의 kubectl context를 거부합니다.
+EKS나 production manifest 검증용이 아닙니다.
 
 로컬 포트 열기:
 
