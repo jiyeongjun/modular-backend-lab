@@ -103,9 +103,15 @@ wait_deployment_rollout() {
 wait_migration_job() {
   local output
 
-  kubectl_get_or_fail \
-    "job/${MIGRATION_JOB} is missing in namespace/${NAMESPACE}; run scripts/k8s-local-up.sh to create the local migration job" \
-    -n "$NAMESPACE" get "job/${MIGRATION_JOB}" -o name
+  if ! output="$(kubectl -n "$NAMESPACE" get "job/${MIGRATION_JOB}" -o name 2>&1)"; then
+    if [[ "$output" == *"NotFound"* || "$output" == *"not found"* ]]; then
+      log "SKIP: job/${MIGRATION_JOB} is not present; completed local migration jobs are removed by ttlSecondsAfterFinished"
+      log "      Run scripts/k8s-local-up.sh for a fresh migration job completion check."
+      return
+    fi
+
+    fail_with_output "job/${MIGRATION_JOB} is inaccessible in namespace/${NAMESPACE}" "$output"
+  fi
 
   if ! output="$(kubectl -n "$NAMESPACE" wait --for=condition=complete "job/${MIGRATION_JOB}" --timeout="$MIGRATION_WAIT_TIMEOUT" 2>&1)"; then
     printf 'ERROR: migration job/%s did not complete in namespace/%s within %s\n' "$MIGRATION_JOB" "$NAMESPACE" "$MIGRATION_WAIT_TIMEOUT" >&2

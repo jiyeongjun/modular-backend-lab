@@ -299,8 +299,10 @@ scripts/k8s-local-up.sh
 
 `pnpm k8s:smoke` is local kind runtime verification. Run it after the baseline is applied to confirm
 that kubectl points at the local kind context, the namespace exists, the API/worker/scheduler
-deployments rolled out, the migration job completed, the API health endpoints respond, and deployed
-observability services are reachable at a shallow service-proxy level:
+deployments rolled out, the API health endpoints respond, and deployed observability services are
+reachable at a shallow service-proxy level. If the migration job is still present, the smoke check
+waits for completion; if Kubernetes already removed the completed job through `ttlSecondsAfterFinished`,
+it reports that and continues with the remaining runtime checks:
 
 ```bash
 pnpm k8s:smoke

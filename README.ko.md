@@ -295,9 +295,10 @@ scripts/k8s-local-up.sh
 ```
 
 `pnpm k8s:smoke`는 local kind runtime 검증입니다. baseline을 적용한 뒤 실행해 kubectl이 local kind
-context를 보고 있는지, namespace가 있는지, API/worker/scheduler deployment가 rollout됐는지,
-migration job이 완료됐는지, API health endpoint가 응답하는지, 배포된 observability service가 얕은
-service-proxy 수준에서 접근 가능한지 확인합니다:
+context를 보고 있는지, namespace가 있는지, API/worker/scheduler deployment가 rollout됐는지, API
+health endpoint가 응답하는지, 배포된 observability service가 얕은 service-proxy 수준에서 접근
+가능한지 확인합니다. migration job이 아직 남아 있으면 완료 상태를 확인하고, 이미
+`ttlSecondsAfterFinished`로 정리된 경우에는 이를 알린 뒤 나머지 runtime 검증을 계속합니다:
 
 ```bash
 pnpm k8s:smoke
