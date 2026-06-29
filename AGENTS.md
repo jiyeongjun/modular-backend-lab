@@ -14,7 +14,7 @@ adapters, and observability signals without breaking long-term boundaries.
 Hono = delivery adapter
 Kysely = persistence adapter
 Scheduler/Worker = delivery/runtime adapter
-BullMQ/SQS = queue adapter
+BullMQ/SQS/MSK = queue/event backend adapter candidates
 Valkey = local Redis-compatible infrastructure
 OpenTelemetry = telemetry instrumentation boundary
 Grafana stack = local observability runtime
@@ -27,12 +27,12 @@ TypeScript compiler = first-line architecture guard
 1. Hono is a delivery adapter only.
 2. Kysely is a persistence adapter only.
 3. Scheduler and worker runtime are delivery/runtime adapters only.
-4. BullMQ and SQS are queue adapters only.
+4. BullMQ, SQS, and MSK are queue/event backend adapters only.
 5. Valkey is local Redis-compatible infrastructure, not domain logic.
 6. OpenTelemetry is instrumentation boundary, not business logic.
 7. Grafana, Prometheus, Tempo, Loki, and Alloy are local observability runtime.
 8. Domain logic must be pure.
-9. Domain code must not import Hono, Kysely, Zod, Pino, OpenTelemetry SDKs, BullMQ, SQS SDKs, Redis/Valkey clients, Node HTTP types, or infra code.
+9. Domain code must not import Hono, Kysely, Zod, Pino, OpenTelemetry SDKs, BullMQ, SQS SDKs, Kafka/MSK clients, Redis/Valkey clients, Node HTTP types, or infra code.
 10. Application code must not import Hono, Hono Context, Kysely, queue backend implementations, or OpenTelemetry SDKs.
 11. Application code should depend on ports/interfaces, not concrete infra implementations.
 12. Kysely must be used only in infra persistence code.
@@ -176,9 +176,11 @@ Domain functions may return serializable domain events. Application usecases dec
 persist them. Background publishing happens outside the core domain model and must be idempotent or
 safely retryable.
 
-BullMQ runs on Valkey locally. SQS replaces the queue layer itself in AWS-style deployments. Core
-processors must not import queue SDKs. Worker handlers parse message to command to application/job
-processor.
+BullMQ runs on Valkey locally and remains the default developer/runtime verification path. SQS
+replaces the queue layer for simple AWS-style async work. MSK is a future managed event-stream
+backbone candidate for mature event-driven MSA deployments, not the default local path. Core
+processors must not import queue SDKs, Kafka/MSK clients, or Redis-compatible clients. Worker
+handlers parse message to command to application/job processor.
 
 Schedulers are delivery adapters. Production options include cron, Kubernetes CronJob, Cloud
 Scheduler, EventBridge Scheduler, Temporal, BullMQ repeatable jobs, and queue-triggered workers.

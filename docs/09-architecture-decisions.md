@@ -11,10 +11,12 @@ major in `.node-version` and `engines`.
 Biome is the default formatter and linter. Dependency boundaries belong to dependency-cruiser and the
 custom convention scanner.
 
-## BullMQ Locally, SQS in AWS
+## BullMQ Locally, SQS Or MSK In AWS
 
-BullMQ with Valkey is practical for local development. SQS is documented as the recommended managed
-AWS queue alternative. Core processors depend only on ports.
+BullMQ with Valkey is the default because it is practical for local development and local kind
+verification. SQS is documented as the simple managed AWS queue alternative. MSK is documented as the
+managed Kafka-compatible event streaming backbone candidate for mature event-driven MSA deployments.
+Core processors depend only on ports.
 
 ## Docker Image Tags
 

@@ -19,7 +19,7 @@ cross-layer flow, routes, usecases, jobs, or module boundaries.
 
 - Did domain import any framework or infra dependency?
 - Did application import Hono or Kysely?
-- Did application import BullMQ, SQS, Valkey, or Redis clients?
+- Did application import BullMQ, SQS, Kafka/MSK, Valkey, or Redis clients?
 - Did domain/application import telemetry SDKs?
 - Are business errors modeled as `Result`?
 - Are unexpected errors allowed to throw?

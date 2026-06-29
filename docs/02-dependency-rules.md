@@ -1,7 +1,9 @@
 # Dependency Rules
 
-- Domain must not import Hono, Kysely, Zod, Pino, BullMQ, SQS SDKs, Redis clients, or telemetry SDKs.
-- Application must not import Hono, Kysely, queue SDKs, worker runtimes, or telemetry SDKs.
+- Domain must not import Hono, Kysely, Zod, Pino, BullMQ, SQS SDKs, Kafka/MSK clients, Redis clients,
+  or telemetry SDKs.
+- Application must not import Hono, Kysely, queue SDKs, Kafka/MSK clients, worker runtimes, or
+  telemetry SDKs.
 - Ports describe behavior without depending on concrete adapters.
 - Infrastructure implements ports and maps rows/events explicitly.
 - HTTP reads and validates transport input, calls usecases, and maps results to responses.

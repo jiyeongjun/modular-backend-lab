@@ -13,6 +13,7 @@ This repository does not currently provide:
 - ECR repositories.
 - RDS PostgreSQL instances.
 - SQS queues.
+- MSK clusters or topics.
 - IAM roles, IRSA manifests, or workload identity bindings.
 - ALB Ingress Controller manifests.
 - Secrets Manager, SSM Parameter Store, External Secrets, or CSI driver resources.
@@ -40,8 +41,9 @@ The local kind baseline includes:
 An EKS environment must replace or explicitly own those choices:
 
 - PostgreSQL should be an RDS endpoint or another managed PostgreSQL endpoint.
-- Queue infrastructure may stay on BullMQ only if a Redis-compatible service is chosen; otherwise an
-  SQS adapter must be introduced behind the queue ports.
+- Queue infrastructure may stay on BullMQ only if a Redis-compatible service is chosen. Otherwise,
+  SQS can be introduced for simple managed queue work, or MSK can be introduced later as a managed
+  event streaming backbone for mature event-driven MSA needs.
 - Secrets should come from a production secret delivery path, not the local example Secret.
 - Images should be pulled from ECR or another approved registry with a defined tag policy.
 - AWS access should use IRSA or another workload identity mechanism.
@@ -62,8 +64,9 @@ Decide and document these before adding EKS manifests or infrastructure code:
   to app rollout, what failure stops rollout, and which schema/data changes require a rollback plan.
 - **Secret delivery**: Secrets Manager, SSM Parameter Store, External Secrets, CSI driver, or another
   delivery mechanism; also decide rotation and pod reload behavior.
-- **Queue backend**: whether to introduce an SQS adapter, queue names, DLQ names, visibility timeout,
-  retry policy, duplicate handling, and idempotency keys.
+- **Async backend**: whether to introduce SQS for simple queue delivery or MSK for event streaming;
+  queue/topic names, DLQ or retry topic names, visibility timeout where relevant, partition key,
+  schema versioning, replay policy, duplicate handling, consumer lag ownership, and idempotency keys.
 - **Workload identity**: IRSA or another workload identity method, service account names, role
   ownership, and least-privilege permissions.
 - **Ingress controller**: ALB Ingress Controller or another controller, ingress class, hostnames,
@@ -86,7 +89,7 @@ EKS-specific details stay outside the portable core:
 - Application usecases depend on repository, unit-of-work, queue, and external-service ports.
 - AWS SDK usage belongs only in infra, composition, runtime, worker, or deployment-adapter code that
   owns the external integration.
-- Queue backend selection belongs behind queue publisher/consumer ports.
+- Queue/event backend selection belongs behind queue publisher, consumer, or event-stream ports.
 - Telemetry export details belong in runtime observability configuration and instrumentation
   boundaries, not domain/application logic.
 - Ingress and load-balancer details belong to Kubernetes/platform configuration. Hono remains the
@@ -113,9 +116,9 @@ pnpm eks:preflight
 ```
 
 The script does not create, update, or delete AWS resources or Kubernetes resources. It also does not
-prove that ECR, RDS, SQS, IAM, ingress, secrets, HPA, NetworkPolicy, or observability resources exist.
-Those checks belong in the future EKS deployment/runbook once those resources are intentionally
-defined.
+prove that ECR, RDS, SQS, MSK, IAM, ingress, secrets, HPA, NetworkPolicy, or observability resources
+exist. Those checks belong in the future EKS deployment/runbook once those resources are
+intentionally defined.
 
 ## Preflight Outcome
 

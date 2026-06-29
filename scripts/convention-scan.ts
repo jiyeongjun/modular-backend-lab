@@ -20,10 +20,15 @@ const requiredStrictCompilerOptions = [
 
 const queueBackendPackages = [
   "@aws-sdk/client-sqs",
+  "@aws-sdk/client-kafka",
+  "@confluentinc/kafka-javascript",
   "@redis/client",
+  "aws-msk-iam-sasl-signer-js",
   "bullmq",
   "ioredis",
   "iovalkey",
+  "kafkajs",
+  "node-rdkafka",
   "redis",
   "valkey",
   "valkey-glide",
@@ -111,9 +116,13 @@ function isQueueBackendPackage(specifier: string): boolean {
   );
 }
 
-function isQueueRuntimeBoundary(relative: string): boolean {
+function isAsyncRuntimeBoundary(relative: string): boolean {
   const portable = toPortablePath(relative);
-  return portable.startsWith("src/infra/queue/") || portable.startsWith("src/workers/");
+  return (
+    portable.startsWith("src/infra/queue/") ||
+    portable.startsWith("src/infra/event-stream/") ||
+    portable.startsWith("src/workers/")
+  );
 }
 
 function scanTsconfig(root: string): Violation[] {
@@ -161,10 +170,10 @@ function scanFile(root: string, file: string, source: string): Violation[] {
   }
 
   const queueBackendImports = importSpecifiers.filter(isQueueBackendPackage);
-  if (queueBackendImports.length > 0 && !isQueueRuntimeBoundary(relative)) {
+  if (queueBackendImports.length > 0 && !isAsyncRuntimeBoundary(relative)) {
     violations.push({
       file: relative,
-      message: `Queue backend package imports are only allowed in src/infra/queue or src/workers: ${Array.from(
+      message: `Queue/event backend package imports are only allowed in src/infra/queue, src/infra/event-stream, or src/workers: ${Array.from(
         new Set(queueBackendImports),
       ).join(", ")}`,
     });
@@ -177,10 +186,15 @@ function scanFile(root: string, file: string, source: string): Violation[] {
     }
 
     const resolvedRelative = toPortablePath(path.relative(root, resolved));
-    if (resolvedRelative.startsWith("src/infra/queue/") && !isQueueRuntimeBoundary(relative)) {
+    const importsAsyncAdapter =
+      resolvedRelative.startsWith("src/infra/queue/") ||
+      resolvedRelative.startsWith("src/infra/event-stream/");
+
+    if (importsAsyncAdapter && !isAsyncRuntimeBoundary(relative)) {
       violations.push({
         file: relative,
-        message: "Queue adapter imports are only allowed in src/infra/queue or src/workers",
+        message:
+          "Queue/event adapter imports are only allowed in src/infra/queue, src/infra/event-stream, or src/workers",
       });
     }
   }

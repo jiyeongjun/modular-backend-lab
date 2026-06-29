@@ -12,9 +12,9 @@ This repository currently provides:
 - Static local Kubernetes validation through `pnpm k8s:validate`.
 
 This repository does not create EKS resources, Terraform modules, Helm releases, IRSA manifests, ALB
-Ingress manifests, RDS instances, SQS queues, VPC resources, or AWS Secrets Manager/SSM resources.
-An EKS overlay would be a future deployment artifact, not something represented by the current
-manifest set.
+Ingress manifests, RDS instances, SQS queues, MSK clusters/topics, VPC resources, or AWS Secrets
+Manager/SSM resources. An EKS overlay would be a future deployment artifact, not something
+represented by the current manifest set.
 
 ## Current Kubernetes Shape
 
@@ -49,8 +49,8 @@ If an EKS overlay is added later, keep local-only concerns out of it:
 
 - Do not carry `deploy/k8s/local/secrets.example.yaml` into EKS. Use a secret delivery mechanism.
 - Do not carry local Postgres into EKS. Use RDS or another managed PostgreSQL endpoint.
-- Do not carry local Valkey when the chosen queue backend is SQS. Use an SQS adapter behind the queue
-  ports.
+- Do not carry local Valkey when the chosen AWS backend is SQS or MSK. Use an SQS queue adapter for
+  simple async work, or an MSK event-stream adapter when event backbone semantics are required.
 - Do not carry the kind cluster config.
 - Do not assume local `emptyDir` volumes are data persistence.
 - Do not assume the local observability stack is the operational observability stack.
@@ -65,7 +65,7 @@ counts, resource sizing, observability export, and scaling policy.
 | Current local boundary | EKS-style replacement | Boundary rule |
 | --- | --- | --- |
 | In-cluster Postgres deployment | RDS PostgreSQL endpoint | Application code sees repository ports. Only the config/infra boundary reads `DATABASE_URL`, and Kysely remains an infra persistence adapter. |
-| BullMQ plus local Valkey | SQS queue adapter | Core processors depend on queue/event publisher ports and must not import BullMQ, SQS SDKs, Redis, or Valkey clients. |
+| BullMQ plus local Valkey | SQS queue adapter or MSK event-stream adapter | Core processors depend on queue/event publisher ports and must not import BullMQ, SQS SDKs, Kafka/MSK clients, Redis, or Valkey clients. |
 | Local Kubernetes Secret example | Secrets Manager, SSM Parameter Store, External Secrets, CSI driver, or another secret delivery path | Application code sees validated environment/config values, not the secret backend. |
 | Static AWS credentials in env or secrets | IRSA/workload identity | AWS access belongs to adapter/runtime code through pod identity, not long-lived credentials in Kubernetes Secrets. |
 | Local service access | ALB Ingress Controller or another ingress controller | Hono remains a delivery adapter behind the ingress path. Application/domain code does not know load balancers, TLS, or ingress annotations. |
@@ -87,18 +87,29 @@ Migration execution remains a deployment decision. The existing migration `Job` 
 runtime shape, but the EKS workflow must decide when it is safe to run migrations, what credentials
 are used, and how failures are handled.
 
-## Queue
+## Queue And Event Streaming
 
-The local baseline uses BullMQ with Valkey because it is practical for kind. AWS-style deployments
-can replace that adapter with SQS:
+The local baseline uses BullMQ with Valkey because it is practical for kind and keeps the default
+developer path runnable without paid managed services. AWS-style deployments can choose between
+different async backends:
+
+- Use SQS when the requirement is simple managed queue delivery, retries, visibility timeout, and
+  DLQ-based worker processing.
+- Use MSK when the system has matured into event-driven MSA needs: multiple independent consumer
+  groups, replay from retained streams, topic/partition design, schema versioning, and consumer lag
+  operations.
 
 - Queue backend selection stays behind publisher/consumer ports.
-- Worker handlers parse external queue messages into commands for application/job processors.
-- Core processors do not import queue SDKs or Redis-compatible clients.
+- Worker handlers parse external queue or stream messages into commands for application/job
+  processors.
+- Core processors do not import queue SDKs, Kafka/MSK clients, or Redis-compatible clients.
 - SQS visibility timeout, retries, DLQ behavior, and duplicate delivery idempotency must be decided
   before using SQS operationally.
+- MSK topic naming, partition keys, schema versioning, retry/dead-letter topics, consumer groups,
+  replay policy, and lag monitoring must be decided before using MSK operationally.
 
-This repository documents the SQS adapter boundary but does not create SQS queues or IAM policies.
+This repository documents the SQS and MSK adapter boundaries but does not create SQS queues, MSK
+clusters/topics, or IAM policies.
 
 ## Secrets And AWS Access
 
@@ -156,8 +167,8 @@ Before treating an EKS overlay as deployable, answer these outside the current r
 - What image registry, tag policy, and rollout process are used?
 - How are `DATABASE_URL` and other secrets delivered and rotated?
 - Which database endpoint is used, and how are migrations approved and rolled back?
-- Which queue backend is selected, and what are its retry, DLQ, visibility timeout, and idempotency
-  rules?
+- Which async backend is selected: SQS for simple managed queue delivery, or MSK for event streaming?
+  What are its retry, DLQ, visibility timeout, partition, replay, lag, and idempotency rules?
 - Which service accounts use workload identity, and which AWS permissions do they have?
 - Which ingress controller owns external traffic, TLS, and health checks?
 - Which metrics drive HPA, and what SLO or load target justifies the thresholds?

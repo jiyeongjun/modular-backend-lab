@@ -12,6 +12,9 @@ No active contract.
 - Use `domain_events` as the append-only source-of-truth ledger for stateful business aggregates.
 - Keep current state tables as projections/read models for HTTP responses, idempotency lookup, and batch scans.
 - Keep `outbox_events` separate as the integration publishing queue; it must not become the event store.
+- Keep BullMQ plus Valkey as the default local/test runtime, document SQS as the simple AWS async
+  queue option, and document MSK as the managed event-stream backbone candidate for mature
+  event-driven MSA deployments.
 - Apply the ledger pattern to `customer`, `auth`, `authorization`, `audit-log`, `address-book`,
   `order`, `payment`, `inventory`, `fulfillment`, `refund`, `settlement`, `promotion`, `returns`,
   `notification`, and `support-ticket`.

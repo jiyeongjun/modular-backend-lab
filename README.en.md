@@ -28,7 +28,7 @@ Infrastructure adapters
 - Support-ticket = customer inquiry intake, assignment, resolution, and closure workflow module
 - Kysely = persistence adapter
 - Scheduler/Worker = delivery/runtime adapter
-- BullMQ/SQS = queue adapter
+- BullMQ/SQS/MSK = queue/event backend adapter candidates
 - Valkey = local Redis-compatible infrastructure
 - OpenTelemetry = telemetry instrumentation boundary
 - Grafana stack = local observability runtime
@@ -112,10 +112,10 @@ Hono stays as a delivery adapter. Hono Context never enters application or domai
 Kysely provides typed SQL but remains a persistence adapter. DB rows are explicitly mapped to domain
 models.
 
-Queue backends are isolated behind ports. Core processors do not know BullMQ, SQS, Redis, or Valkey.
-Current BullMQ/ioredis usage stays under `src/infra/queue/**`, and worker runtime composition under
-`src/workers/**` calls jobs, usecases, or processors. `src/jobs/**` does not directly import queue
-SDKs or queue adapters.
+Queue and event backends are isolated behind ports. Core processors do not know BullMQ, SQS,
+MSK/Kafka, Redis, or Valkey. Current BullMQ/ioredis usage stays under `src/infra/queue/**`, and
+worker runtime composition under `src/workers/**` calls jobs, usecases, or processors. `src/jobs/**`
+does not directly import queue SDKs or queue adapters.
 
 OpenTelemetry and Grafana are runtime instrumentation boundaries. Pure domain logic does not log,
 emit metrics, or start traces directly.
@@ -257,7 +257,7 @@ while external calls such as payment or carrier API requests happen outside DB t
 - Toss Payments adapter: PG integration sits behind a payment gateway port so core usecases do not know provider SDK or HTTP details.
 - Pino JSON logging: operational logs are emitted as structured JSON signals.
 - OpenTelemetry, Prometheus, Grafana stack: request and runtime signals are observed outside application/domain logic through standard instrumentation boundaries.
-- BullMQ + Valkey, SQS documentation: local development uses a Redis-compatible queue, while AWS-style deployments can replace the queue adapter with SQS without changing core processors.
+- BullMQ + Valkey, SQS, MSK documentation: local development and kind verification use a Redis-compatible queue. AWS-style deployments can use an SQS adapter for simple async work, while mature event-driven MSA deployments can treat MSK as an event backbone candidate without changing core processors.
 - Vitest, Testcontainers: pure domain/usecase behavior stays in fast unit tests, while repositories and migrations are verified against real PostgreSQL.
 - Biome, dependency-cruiser, custom convention scanner: formatting/lint, import direction, and repository-specific architecture rules are enforced as repeatable quality gates.
 
@@ -550,7 +550,7 @@ application log shipping is not added here; Pino logs remain JSON-shaped for a f
 
 This repository currently provides a reusable app/runtime Kubernetes base and a kind-only local
 overlay. EKS overlays, Terraform, Helm, EKS cluster resources, VPC resources, ALB Ingress manifests,
-RDS, SQS, IRSA manifests, and Secrets Manager/SSM resource provisioning are out of scope.
+RDS, SQS, MSK, IRSA manifests, and Secrets Manager/SSM resource provisioning are out of scope.
 
 `deploy/k8s/base/` is the runtime shape for the API, worker, scheduler, migration job, and shared
 configmap. `deploy/k8s/local/` is the kind-only overlay that adds a namespace, non-sensitive secret
@@ -565,8 +565,9 @@ operating checklist. Before creating real EKS resources, use
 region, and ECR naming prerequisites with read-only checks.
 
 - Replace in-cluster Postgres with RDS through `DATABASE_URL`.
-- Replace local BullMQ/Valkey with an SQS queue adapter behind the existing queue/event publisher
-  ports.
+- Keep local BullMQ/Valkey as the default local verification path. In AWS, use SQS for simple async
+  work, or an MSK event-stream adapter when mature event-driven MSA requirements need multiple
+  consumer groups, replay, and stream retention.
 - Replace local Kubernetes Secrets with a secret delivery path such as Secrets Manager, SSM, or
   External Secrets.
 - Use IRSA/workload identity for pod AWS access instead of static credentials.
@@ -677,6 +678,7 @@ scripts/convention-scan.ts repository-specific drift checks
 docs/17-definition-of-done completion standard
 docs/19-eks-operating-boundaries EKS adapter/runtime boundary guide
 docs/20-eks-preflight EKS readiness checklist before resource creation
+src/infra/event-stream/msk   MSK event backbone boundary stub
 CI                         quality gates
 ```
 

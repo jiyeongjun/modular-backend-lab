@@ -28,7 +28,7 @@ Infrastructure adapters
 - Support-ticket = 고객 문의 접수, 배정, 해결, 종료 workflow module
 - Kysely = persistence adapter
 - Scheduler/Worker = delivery/runtime adapter
-- BullMQ/SQS = queue adapter
+- BullMQ/SQS/MSK = queue/event backend adapter 후보
 - Valkey = local Redis-compatible infrastructure
 - OpenTelemetry = telemetry instrumentation boundary
 - Grafana stack = local observability runtime
@@ -112,10 +112,10 @@ Hono는 HTTP 요청/응답만 다루는 delivery adapter입니다. Hono Context�
 Kysely는 typed SQL을 제공하지만 persistence adapter에만 머뭅니다. DB row는 domain model로 직접
 쓰지 않고 mapper를 통해 명시적으로 변환합니다.
 
-Queue backend는 port 뒤에 격리됩니다. Core processor는 BullMQ, SQS, Redis, Valkey를 직접 알지
-않습니다. 현재 BullMQ/ioredis 사용은 `src/infra/queue/**`에 머물고, worker runtime 조립은
-`src/workers/**`에서 job/usecase/processor를 호출합니다. `src/jobs/**`는 queue SDK나 queue adapter를
-직접 import하지 않습니다.
+Queue와 event backend는 port 뒤에 격리됩니다. Core processor는 BullMQ, SQS, MSK/Kafka, Redis,
+Valkey를 직접 알지 않습니다. 현재 BullMQ/ioredis 사용은 `src/infra/queue/**`에 머물고, worker runtime
+조립은 `src/workers/**`에서 job/usecase/processor를 호출합니다. `src/jobs/**`는 queue SDK나 queue
+adapter를 직접 import하지 않습니다.
 
 OpenTelemetry와 Grafana stack은 runtime instrumentation 경계입니다. 순수 domain logic은 logging,
 metrics, traces를 직접 수행하지 않습니다.
@@ -254,7 +254,7 @@ update, outbox write는 짧은 UnitOfWork transaction 안에서 함께 처리하
 - Toss Payments adapter: PG 연동은 payment gateway port 뒤에 둬 core usecase가 provider SDK나 HTTP 세부사항을 알지 않게 합니다.
 - Pino JSON logging: 운영 로그를 구조화된 JSON signal로 남기기 위한 선택입니다.
 - OpenTelemetry, Prometheus, Grafana stack: application code와 domain logic 바깥에서 request/runtime signal을 관찰하기 위한 표준 instrumentation 경계입니다.
-- BullMQ + Valkey, SQS 문서화: local 개발은 Redis-compatible queue로 재현하고, AWS-style 배포에서는 queue adapter를 SQS로 교체할 수 있게 core processor를 분리합니다.
+- BullMQ + Valkey, SQS, MSK 문서화: local 개발과 kind 검증은 Redis-compatible queue로 재현합니다. AWS-style 배포에서는 단순 async work는 SQS adapter, 성숙한 event-driven MSA의 event backbone은 MSK adapter 후보로 두되 core processor는 backend를 모르게 분리합니다.
 - Vitest, Testcontainers: 순수 domain/usecase는 빠른 unit test로, repository와 migration은 실제 PostgreSQL 기반 integration test로 검증합니다.
 - Biome, dependency-cruiser, custom convention scanner: formatting/lint, import direction, repo-specific architecture rule을 반복 가능한 quality gate로 묶습니다.
 
@@ -542,7 +542,7 @@ application log shipping collector를 새로 추가하지는 않습니다. Pino 
 ## EKS 고려사항
 
 이번 레포가 제공하는 Kubernetes 범위는 재사용 가능한 app/runtime base와 kind 전용 local overlay입니다.
-EKS overlay, Terraform, Helm, EKS cluster resource, VPC, ALB Ingress manifest, RDS, SQS, IRSA
+EKS overlay, Terraform, Helm, EKS cluster resource, VPC, ALB Ingress manifest, RDS, SQS, MSK, IRSA
 manifest, Secrets Manager/SSM resource 생성은 포함하지 않습니다.
 
 `deploy/k8s/base/`는 API, worker, scheduler, migration job, 공통 configmap으로 구성된 runtime
@@ -557,7 +557,9 @@ resource를 만들기 전에는 [`docs/20-eks-preflight.md`](./docs/20-eks-prefl
 `pnpm eks:preflight`로 계정, region, ECR 이름 같은 운영 전제조건을 read-only로 확인합니다.
 
 - in-cluster Postgres는 `DATABASE_URL`을 통해 RDS로 교체합니다.
-- local BullMQ/Valkey는 기존 queue/event publisher port 뒤의 SQS adapter로 교체합니다.
+- local BullMQ/Valkey는 기본 로컬 검증 경로로 유지합니다. AWS에서는 단순 async work는 SQS adapter로,
+  여러 consumer group/replay/stream retention이 필요한 event-driven MSA 단계는 MSK event-stream
+  adapter로 분리합니다.
 - local Kubernetes Secret은 Secrets Manager, SSM, External Secrets 같은 secret delivery 방식으로
   교체합니다.
 - pod의 AWS 접근은 static credential 대신 IRSA/workload identity로 연결합니다.
@@ -666,6 +668,7 @@ scripts/convention-scan.ts repository-specific drift checks
 docs/17-definition-of-done completion standard
 docs/19-eks-operating-boundaries EKS adapter/runtime boundary guide
 docs/20-eks-preflight EKS readiness checklist before resource creation
+src/infra/event-stream/msk   MSK event backbone boundary stub
 CI                         quality gates
 ```
 
