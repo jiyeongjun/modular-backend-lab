@@ -40,6 +40,7 @@
     "arch:check": "dependency-cruiser src --config dependency-cruiser.config.cjs",
     "k8s:validate": "bash scripts/k8s-local-validate.sh",
     "k8s:smoke": "bash scripts/k8s-local-smoke.sh",
+    "eks:preflight": "bash scripts/eks-preflight.sh",
     "quality": "pnpm typecheck && pnpm check && pnpm test && pnpm arch:check && pnpm conventions:scan && pnpm build",
     "observability:up": "docker compose -f docker-compose.observability.yml up -d",
     "observability:down": "docker compose -f docker-compose.observability.yml down"

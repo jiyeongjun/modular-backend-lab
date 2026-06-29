@@ -552,7 +552,9 @@ overlay를 만든다면 이 local-only 요소를 그대로 옮기지 않고 mana
 분리해야 합니다.
 
 EKS로 갈 때도 adapter 경계는 유지합니다. 더 자세한 판단 기준은
-[`docs/19-eks-operating-boundaries.md`](./docs/19-eks-operating-boundaries.md)를 참고하세요.
+[`docs/19-eks-operating-boundaries.md`](./docs/19-eks-operating-boundaries.md)를 참고하세요. 실제 EKS
+resource를 만들기 전에는 [`docs/20-eks-preflight.md`](./docs/20-eks-preflight.md)와
+`pnpm eks:preflight`로 계정, region, ECR 이름 같은 운영 전제조건을 read-only로 확인합니다.
 
 - in-cluster Postgres는 `DATABASE_URL`을 통해 RDS로 교체합니다.
 - local BullMQ/Valkey는 기존 queue/event publisher port 뒤의 SQS adapter로 교체합니다.
@@ -663,6 +665,7 @@ dependency-cruiser         import boundaries
 scripts/convention-scan.ts repository-specific drift checks
 docs/17-definition-of-done completion standard
 docs/19-eks-operating-boundaries EKS adapter/runtime boundary guide
+docs/20-eks-preflight EKS readiness checklist before resource creation
 CI                         quality gates
 ```
 

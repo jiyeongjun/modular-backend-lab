@@ -560,7 +560,9 @@ operational boundaries.
 
 For EKS-style deployment, keep the same adapter boundaries. See
 [`docs/19-eks-operating-boundaries.md`](./docs/19-eks-operating-boundaries.md) for the fuller
-operating checklist.
+operating checklist. Before creating real EKS resources, use
+[`docs/20-eks-preflight.md`](./docs/20-eks-preflight.md) and `pnpm eks:preflight` to check account,
+region, and ECR naming prerequisites with read-only checks.
 
 - Replace in-cluster Postgres with RDS through `DATABASE_URL`.
 - Replace local BullMQ/Valkey with an SQS queue adapter behind the existing queue/event publisher
@@ -674,6 +676,7 @@ dependency-cruiser         import boundaries
 scripts/convention-scan.ts repository-specific drift checks
 docs/17-definition-of-done completion standard
 docs/19-eks-operating-boundaries EKS adapter/runtime boundary guide
+docs/20-eks-preflight EKS readiness checklist before resource creation
 CI                         quality gates
 ```
 
