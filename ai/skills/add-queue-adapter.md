@@ -11,6 +11,7 @@ Use for BullMQ, SQS, MSK/Kafka, or another queue/event backend adapter.
 ## Required Reading
 
 - `docs/13-queue-backend-policy.md`
+- `docs/21-event-contract-and-topic-policy.md`
 - `src/infra/queue/sqs/README.md`
 - `src/infra/event-stream/msk/README.md` when the target is MSK/Kafka
 - `docs/18-type-safety-policy.md`

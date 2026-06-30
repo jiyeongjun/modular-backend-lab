@@ -678,6 +678,7 @@ scripts/convention-scan.ts repository-specific drift checks
 docs/17-definition-of-done completion standard
 docs/19-eks-operating-boundaries EKS adapter/runtime boundary guide
 docs/20-eks-preflight EKS readiness checklist before resource creation
+docs/21-event-contract-and-topic-policy event envelope and topic/message policy
 src/infra/event-stream/msk   MSK event backbone boundary stub
 CI                         quality gates
 ```

@@ -33,7 +33,8 @@ for mature event-driven MSA deployments; it is not part of the default local pat
 
 Event sourcing is separate from queue selection. `domain_events` is the source-of-truth ledger,
 `outbox_events` is the integration publishing queue, and BullMQ/SQS/MSK are delivery backends behind
-ports.
+ports. Event envelope, topic, message naming, partition/routing key, retry, DLQ, and replay rules are
+defined in [`docs/21-event-contract-and-topic-policy.md`](./21-event-contract-and-topic-policy.md).
 
 ## Current Implementation Boundary
 
@@ -74,3 +75,5 @@ ports.
 15. Do not put business rules in queue handlers.
 16. Worker handlers should parse message to command to application/job processor.
 17. Failed jobs and consumer lag must be observable.
+18. New queue or event-stream adapters must follow the event contract and topic policy before adding
+    backend-specific code or resources.
