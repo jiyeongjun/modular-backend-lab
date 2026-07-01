@@ -41,26 +41,35 @@ implementation types.
 
 ## Event Envelope
 
+This is the target envelope for external integration events. It is not a claim that every current
+`outbox_events` row or local BullMQ job payload already has every field. The current outbox row shape
+is the internal source shape for publishing work; an SQS/MSK or other external adapter must translate
+or enrich that row into the external envelope it exposes.
+
 Use these fields for publishable integration events unless a documented adapter-specific reason
 exists:
 
-| Field | Required | Purpose |
+| Field | Requirement | Purpose |
 | --- | --- | --- |
-| `eventId` | yes | Globally unique event identifier for deduplication and tracing. |
-| `eventType` | yes | Stable past-tense business fact name such as `OrderPaid`. |
-| `eventVersion` | yes | Contract version for the event payload. |
-| `aggregateType` | yes | Owning aggregate or module concept, such as `Order` or `Payment`. |
-| `aggregateId` | yes | Aggregate identifier used for consistency and common ordering scopes. |
-| `occurredAt` | yes | Business event time in ISO 8601 UTC format. |
-| `producer` | yes | Producing module or runtime boundary, such as `order` or `outbox-publisher`. |
-| `correlationId` | yes | Request or workflow identifier tying related work together. |
-| `causationId` | yes | Event, command, message, or request that caused this event. |
-| `idempotencyKey` | yes | Stable key consumers can use to make handling repeat-safe. |
-| `payload` | yes | Versioned event data. This is the external contract. |
-| `metadata` | no | Non-business delivery, trace, tenant, schema, or retention hints. |
+| `eventId` | required | Globally unique event identifier for deduplication and tracing. Existing outbox ids may be used when they are the published event id. |
+| `eventType` | required | Stable past-tense business fact name such as `OrderPaid`. |
+| `eventVersion` | conditional | Required for external SQS/MSK or cross-service contracts. Current internal outbox rows may lack it until an adapter maps a documented version. |
+| `aggregateType` | required | Owning aggregate or module concept, such as `Order` or `Payment`. |
+| `aggregateId` | required | Aggregate identifier used for consistency and common ordering scopes. |
+| `occurredAt` | required | Business event time in ISO 8601 UTC format. |
+| `producer` | conditional | Required once the event crosses a service or backend contract boundary; recommended for local delivery. |
+| `correlationId` | conditional | Include when request or workflow context exists. Do not invent a fake value when there is no correlation context. |
+| `causationId` | conditional | Include when the causing event, command, message, or request is known. |
+| `idempotencyKey` | conditional | Include a stable business key when available; otherwise consumers must use `eventId` for deduplication. |
+| `payload` | required | Versioned event data. This is the external contract. |
+| `metadata` | recommended | Non-business delivery, trace, tenant, schema, or retention hints. |
 
 `payload` must not be a raw DB row, ORM/Kysely shape, HTTP DTO, or internal table dump. Map rows and
 commands into explicit event payloads.
+
+Do not migrate the current outbox schema just to satisfy this document. Add the missing envelope
+fields at the adapter boundary when a concrete external publishing path needs them, and document any
+temporary translation gap.
 
 ## Event Type Naming
 
@@ -221,6 +230,7 @@ systems. Keep them intentionally small.
 Before adding or changing a delivery adapter, document:
 
 - Event envelope fields and payload version.
+- Translation from the current outbox row or domain event shape into the published envelope.
 - Logical topic or queue name.
 - Routing or partition key and ordering scope.
 - Retry, DLQ, and replay policy.
