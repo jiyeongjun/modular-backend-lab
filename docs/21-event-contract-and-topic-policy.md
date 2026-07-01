@@ -67,6 +67,10 @@ exists:
 `payload` must not be a raw DB row, ORM/Kysely shape, HTTP DTO, or internal table dump. Map rows and
 commands into explicit event payloads.
 
+The code-level envelope type and mapper live in `src/infra/outbox/integration-event-envelope.ts` and
+`src/infra/outbox/integration-event-envelope.mapper.ts`. External delivery adapters must pass the
+documented `eventVersion`, `producer`, and explicit external `payload` at the publish boundary.
+
 Do not migrate the current outbox schema just to satisfy this document. Add the missing envelope
 fields at the adapter boundary when a concrete external publishing path needs them, and document any
 temporary translation gap.
